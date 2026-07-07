@@ -1,0 +1,12 @@
+# Project Tech Stack
+- Frontend: React Native (Expo)
+- Language: TypeScript
+- Styling: Tailwind CSS (NativeWind v4+)
+- Backend/Database: Supabase
+
+# Rules & Guidelines
+- Always use TypeScript with strict type checking.
+- Use functional components and hooks.
+- Follow Tailwind (NativeWind) patterns for styling. Do not use StyleSheet.create unless absolutely necessary.
+- Write clean, modular, and reusable code.
+- Ensure cross-platform compatibility (iOS, Android, and Web).
