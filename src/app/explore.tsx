@@ -33,7 +33,7 @@ export default function CalendarScreen() {
       paddingBottom: insets.bottom,
     },
     web: {
-      paddingTop: Spacing.six,
+      paddingTop: Spacing.two,
       paddingBottom: Spacing.four,
     },
   });
@@ -64,7 +64,9 @@ export default function CalendarScreen() {
             selectedFilters={selectedFilters}
             onToggleFilter={toggleFilter}
           />
-          <Calendar activeFilters={selectedFilters} />
+          <View style={styles.calendarWrapper}>
+            <Calendar activeFilters={selectedFilters} />
+          </View>
         </View>
 
         {Platform.OS === 'web' && <WebBadge />}
@@ -97,11 +99,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   calendarSection: {
-    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
-    alignItems: Platform.OS === 'web' ? 'flex-start' : 'center',
-    justifyContent: 'center',
+    flexDirection: 'column',
+    alignItems: 'center',
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.five,
+  },
+  calendarWrapper: {
+    alignSelf: 'stretch',
+    width: '100%',
   },
 });

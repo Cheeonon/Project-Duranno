@@ -24,19 +24,28 @@ export const CALENDAR_FILTER_OPTIONS = [
 type CalendarFilterSectionProps = {
   selectedFilters: CalendarFilterCategory[];
   onToggleFilter: (filter: CalendarFilterCategory) => void;
+  layout?: 'calendar' | 'panel';
 };
 
 export function CalendarFilterSection({
   selectedFilters,
   onToggleFilter,
+  layout = 'calendar',
 }: CalendarFilterSectionProps) {
   return (
-    <ThemedView type="backgroundElement" style={styles.container}>
-      <ThemedText type="smallBold" style={styles.title}>
-        Filter
-      </ThemedText>
+    <ThemedView
+      type="backgroundElement"
+      style={[styles.container, layout === 'panel' && styles.containerPanel]}>
+      <View style={styles.headerRow}>
+        <ThemedText type="smallBold" style={styles.title}>
+          Filter
+        </ThemedText>
+        <ThemedText type="code" themeColor="textSecondary" style={styles.demoNote}>
+          Demo
+        </ThemedText>
+      </View>
 
-      <View style={styles.options}>
+      <View style={styles.optionsRow}>
         {CALENDAR_FILTER_OPTIONS.map((option) => {
           const isSelected = selectedFilters.includes(option.id);
 
@@ -44,7 +53,7 @@ export function CalendarFilterSection({
             <Pressable
               key={option.id}
               onPress={() => onToggleFilter(option.id)}
-              style={({ pressed }) => [pressed && styles.pressed]}>
+              style={({ pressed }) => [styles.optionPressable, pressed && styles.pressed]}>
               <ThemedView
                 type={isSelected ? 'backgroundSelected' : 'background'}
                 style={[styles.optionCard, isSelected && styles.optionCardSelected]}>
@@ -60,34 +69,46 @@ export function CalendarFilterSection({
           );
         })}
       </View>
-
-      <ThemedText type="code" themeColor="textSecondary" style={styles.demoNote}>
-        Demo
-      </ThemedText>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    width: 90,
+    alignSelf: 'center',
+    width: '50%',
+    maxWidth: 256,
     borderRadius: Spacing.two,
     padding: Spacing.two,
     gap: Spacing.one,
   },
+  containerPanel: {
+    alignSelf: 'stretch',
+    width: '100%',
+    maxWidth: '100%',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   title: {
     fontSize: 11,
-    textAlign: 'center',
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
-  options: {
+  optionsRow: {
+    flexDirection: 'row',
     gap: Spacing.one,
   },
+  optionPressable: {
+    flex: 1,
+  },
   optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: Spacing.one,
     paddingVertical: Spacing.one,
     paddingHorizontal: 6,
-    alignItems: 'center',
     gap: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#D0D0D5',
@@ -101,9 +122,9 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   optionLabel: {
-    fontSize: 10,
-    lineHeight: 13,
-    textAlign: 'center',
+    flex: 1,
+    fontSize: 9,
+    lineHeight: 12,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   checkbox: {
@@ -121,13 +142,12 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     color: '#FFFFFF',
-    fontSize: 9,
-    lineHeight: 11,
+    fontSize: 10,
+    lineHeight: 12,
     fontWeight: '700',
   },
   demoNote: {
-    alignSelf: 'center',
-    fontSize: 9,
+    fontSize: 10,
     textTransform: 'uppercase',
   },
   pressed: {

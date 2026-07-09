@@ -1,10 +1,12 @@
 import { Image } from 'expo-image';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Keyframe, Easing } from 'react-native-reanimated';
 
 const DURATION = 300;
 const LOGO_ASPECT_RATIO = 1024 / 915;
-const LOGO_WIDTH = 120;
+const LOGO_WIDTH = 140;
 
 export function AnimatedSplashOverlay() {
   return null;
@@ -27,9 +29,26 @@ const logoKeyframe = new Keyframe({
 });
 
 export function AnimatedIcon() {
+  const [animationKey, setAnimationKey] = useState(0);
+  const isFirstFocus = useRef(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+
+      setAnimationKey((key) => key + 1);
+    }, []),
+  );
+
   return (
     <View style={styles.iconContainer}>
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
+      <Animated.View
+        key={animationKey}
+        style={styles.imageContainer}
+        entering={logoKeyframe.duration(DURATION)}>
         <Image
           style={styles.image}
           source={require('@/assets/images/duranno-logo.png')}

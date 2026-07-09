@@ -71,6 +71,8 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [zoom, setZoom] = useState<CalendarZoom>('compact');
 
+  const isExpanded = zoom === 'expanded';
+
   useEffect(() => {
     const tick = () => setToday(new Date());
     const interval = setInterval(tick, 1000);
@@ -81,8 +83,6 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
     () => getCalendarDays(viewDate.getFullYear(), viewDate.getMonth()),
     [viewDate],
   );
-
-  const isExpanded = zoom === 'expanded';
 
   const goToPrevMonth = () => {
     setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
@@ -102,8 +102,12 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
   };
 
   const handleDayPress = (date: Date) => {
+    if (isExpanded) {
+      return;
+    }
+
     const events = getDayEvents(date.getDate(), activeFilters);
-    if (events.length === 0 || isExpanded) {
+    if (events.length === 0) {
       return;
     }
 
@@ -126,9 +130,7 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
     viewDate.getFullYear() === today.getFullYear() && viewDate.getMonth() === today.getMonth();
 
   return (
-    <ThemedView
-      type="backgroundElement"
-      style={[styles.container, isExpanded && styles.containerExpanded]}>
+    <ThemedView type="backgroundElement" style={styles.container}>
       <View style={styles.todayBanner}>
         <ThemedText type="smallBold" style={styles.bannerDate}>
           {formatKoreanDate(today)}
@@ -201,7 +203,7 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
             key={weekday}
             type="smallBold"
             themeColor="textSecondary"
-            style={[styles.weekday, isExpanded && styles.weekdayExpanded, index === 0 && styles.sundayText]}>
+            style={[styles.weekday, index === 0 && styles.sundayText]}>
             {weekday}
           </ThemedText>
         ))}
@@ -229,7 +231,6 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
                   type="small"
                   style={[
                     styles.dayText,
-                    isExpanded && styles.dayTextExpanded,
                     isSunday && !isToday && styles.sundayText,
                     isToday && styles.todayText,
                     isSelected && !isToday && styles.selectedDayText,
@@ -347,13 +348,10 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     width: '100%',
-    maxWidth: 320,
+    maxWidth: 512,
     borderRadius: Spacing.three,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  containerExpanded: {
-    maxWidth: 640,
+    padding: 19,
+    gap: 13,
   },
   todayBanner: {
     alignItems: 'center',
@@ -374,9 +372,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   zoomButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#B0B4BA',
     alignItems: 'center',
@@ -386,19 +384,19 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   zoomLabel: {
-    fontSize: 11,
-    minWidth: 56,
+    fontSize: 9,
+    minWidth: 52,
     textAlign: 'center',
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   monthLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   navButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -408,10 +406,7 @@ const styles = StyleSheet.create({
   weekday: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 11,
-  },
-  weekdayExpanded: {
-    fontSize: 12,
+    fontSize: 10,
   },
   grid: {
     flexDirection: 'row',
@@ -419,10 +414,10 @@ const styles = StyleSheet.create({
   },
   cell: {
     width: `${100 / 7}%`,
-    padding: 1,
+    padding: 2,
   },
   cellCompact: {
-    height: 40,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
@@ -442,34 +437,20 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     flex: 1,
     gap: 4,
-    padding: 2,
   },
   dayCell: {
-    width: 28,
-    height: 28,
+    width: 27,
+    height: 27,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
   },
   dayCellExpanded: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignSelf: 'flex-start',
-  },
-  markerRow: {
-    flexDirection: 'row',
-    gap: 2,
-    minHeight: 4,
-  },
-  markerDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-  markerSpacer: {
-    height: 4,
   },
   expandedEvents: {
     flex: 1,
@@ -494,21 +475,31 @@ const styles = StyleSheet.create({
   expandedEmptySpace: {
     flex: 1,
   },
+  markerRow: {
+    flexDirection: 'row',
+    gap: 2,
+    minHeight: 4,
+  },
+  markerDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  markerSpacer: {
+    height: 4,
+  },
   dayText: {
     textAlign: 'center',
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  dayTextExpanded: {
-    fontSize: 11,
+    fontSize: 10,
+    lineHeight: 14,
   },
   bannerDate: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 16,
   },
   bannerTime: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 9,
+    lineHeight: 11,
   },
   sundayText: {
     color: '#E5484D',
@@ -532,7 +523,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   eventPanelTitle: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   eventList: {
@@ -552,16 +543,16 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   eventCategoryLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   eventTitle: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   eventDetail: {
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 9,
+    lineHeight: 12,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   todayButton: {
@@ -570,8 +561,8 @@ const styles = StyleSheet.create({
   },
   footerNote: {
     textAlign: 'center',
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 9,
+    lineHeight: 12,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   pressed: {

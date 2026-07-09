@@ -1,6 +1,7 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { Platform, StyleSheet, Text, type TextProps, type TextStyle } from 'react-native';
 
 import { Fonts, ThemeColor } from '@/constants/theme';
+import { scaleTextStyle, useHomeTextScale } from '@/contexts/home-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -10,20 +11,35 @@ export type ThemedTextProps = TextProps & {
 
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
+  const { scale, scaled } = useHomeTextScale();
+
+  const typeStyle =
+    type === 'default'
+      ? styles.default
+      : type === 'title'
+        ? styles.title
+        : type === 'small'
+          ? styles.small
+          : type === 'smallBold'
+            ? styles.smallBold
+            : type === 'subtitle'
+              ? styles.subtitle
+              : type === 'link'
+                ? styles.link
+                : type === 'linkPrimary'
+                  ? styles.linkPrimary
+                  : styles.code;
+
+  const scaledTypeStyle = scale === 1 ? typeStyle : scaleTextStyle(typeStyle, scaled);
+  const scaledCustomStyle =
+    scale === 1 ? style : scaleTextStyle(StyleSheet.flatten(style) as TextStyle | undefined, scaled);
 
   return (
     <Text
       style={[
         { color: theme[themeColor ?? 'text'] },
-        type === 'default' && styles.default,
-        type === 'title' && styles.title,
-        type === 'small' && styles.small,
-        type === 'smallBold' && styles.smallBold,
-        type === 'subtitle' && styles.subtitle,
-        type === 'link' && styles.link,
-        type === 'linkPrimary' && styles.linkPrimary,
-        type === 'code' && styles.code,
-        style,
+        scaledTypeStyle,
+        scaledCustomStyle,
       ]}
       {...rest}
     />

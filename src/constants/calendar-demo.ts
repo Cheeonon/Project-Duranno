@@ -75,3 +75,51 @@ export function getDayEvents(
   const events = DEMO_EVENTS_BY_DAY[day] ?? [];
   return events.filter((event) => activeFilters.includes(event.category));
 }
+
+export type UpcomingEvent = CalendarEvent & {
+  date: Date;
+  dateLabel: string;
+};
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+export function formatUpcomingDate(date: Date) {
+  const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${weekdays[date.getDay()]})`;
+}
+
+export function getUpcomingEvents(
+  fromDate = new Date(),
+  activeFilters?: CalendarFilterCategory[],
+): UpcomingEvent[] {
+  const today = startOfDay(fromDate);
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const events: UpcomingEvent[] = [];
+  const filters = activeFilters ?? ['birthdays', 'events'];
+
+  for (const [dayStr, dayEvents] of Object.entries(DEMO_EVENTS_BY_DAY)) {
+    const day = Number(dayStr);
+    const date = new Date(year, month, day);
+
+    if (date < today) {
+      continue;
+    }
+
+    for (const event of dayEvents) {
+      if (!filters.includes(event.category)) {
+        continue;
+      }
+
+      events.push({
+        ...event,
+        date,
+        dateLabel: formatUpcomingDate(date),
+      });
+    }
+  }
+
+  return events.sort((a, b) => a.date.getTime() - b.date.getTime());
+}
