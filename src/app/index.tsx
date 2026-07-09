@@ -50,7 +50,7 @@ export default function HomeScreen() {
           />
           <HintRow title="교인 검색" hint={getDevMenuHint()} />
           <HintRow
-            title="Fresh start"
+            title="나중에 추가할 메뉴"
             hint={<ThemedText type="code">npm run reset-project</ThemedText>}
           />
         </ThemedView>
