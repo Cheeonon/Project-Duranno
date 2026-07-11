@@ -5,10 +5,11 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
   DEMO_CHURCH_MEMBERS,
+  POSITION_LABELS,
   formatMemberDob,
   searchChurchMembers,
 } from '@/constants/members-demo';
-import { Spacing } from '@/constants/theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -80,10 +81,10 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
             <ThemedView key={member.id} type="background" style={styles.resultCard}>
               <View style={styles.resultHeader}>
                 <ThemedText type="smallBold" style={styles.memberName}>
-                  {member.name}
+                  {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
                 </ThemedText>
                 <ThemedText type="code" themeColor="textSecondary" style={styles.memberRole}>
-                  {member.role}
+                  {POSITION_LABELS[member.position]}
                 </ThemedText>
               </View>
 
@@ -121,7 +122,7 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: Spacing.three,
+    borderRadius: BorderRadius.md,
     padding: Spacing.three,
     gap: Spacing.two,
   },
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
@@ -151,7 +152,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   resultCard: {
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     padding: Spacing.three,
     gap: Spacing.two,
     borderWidth: StyleSheet.hairlineWidth,
@@ -180,7 +181,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   emptyState: {
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     padding: Spacing.four,
     alignItems: 'center',
   },

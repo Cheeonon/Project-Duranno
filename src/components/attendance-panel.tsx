@@ -5,12 +5,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
   DEMO_CELL_GROUP,
-  DEMO_CELL_GROUP_MEMBERS,
   formatAttendanceDate,
   getAttendanceKey,
   getSundaysInMonth,
 } from '@/constants/attendance-demo';
-import { Spacing } from '@/constants/theme';
+import { DEMO_CHURCH_MEMBERS, POSITION_LABELS } from '@/constants/members-demo';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -27,6 +27,10 @@ export function AttendancePanel() {
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const sundays = useMemo(() => getSundaysInMonth(year, month), [year, month]);
+  const cellGroupMembers = useMemo(
+    () => DEMO_CHURCH_MEMBERS.filter((member) => member.cellGroup === DEMO_CELL_GROUP.name),
+    [],
+  );
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
   const [absenceReasons, setAbsenceReasons] = useState<Record<string, string>>({});
   const [absenceEditor, setAbsenceEditor] = useState<AbsenceEditorTarget | null>(null);
@@ -169,14 +173,14 @@ export function AttendancePanel() {
             ))}
           </View>
 
-          {DEMO_CELL_GROUP_MEMBERS.map((member) => (
+          {cellGroupMembers.map((member) => (
             <View key={member.id} style={styles.tableRow}>
               <View style={styles.nameCell}>
                 <ThemedText type="smallBold" style={styles.memberName}>
-                  {member.name}
+                  {member.nameKo}
                 </ThemedText>
                 <ThemedText type="code" themeColor="textSecondary" style={styles.memberRole}>
-                  {member.role}
+                  {POSITION_LABELS[member.position]}
                 </ThemedText>
               </View>
 
@@ -189,9 +193,9 @@ export function AttendancePanel() {
                 return (
                   <Pressable
                     key={`${member.id}-${date.toISOString()}`}
-                    accessibilityLabel={`${member.name} ${formatAttendanceDate(date)} 출석`}
+                    accessibilityLabel={`${member.nameKo} ${formatAttendanceDate(date)} 출석`}
                     onPress={() => toggleAttendance(member.id, date)}
-                    {...getAbsenceCellHandlers(member.id, member.name, date)}
+                    {...getAbsenceCellHandlers(member.id, member.nameKo, date)}
                     style={({ pressed }) => [
                       styles.attendanceCell,
                       isPresent && styles.attendanceCellPresent,
@@ -284,7 +288,7 @@ export function AttendancePanel() {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: Spacing.three,
+    borderRadius: BorderRadius.md,
     padding: Spacing.three,
     gap: Spacing.two,
   },
@@ -360,7 +364,7 @@ const styles = StyleSheet.create({
   attendanceCell: {
     width: 52,
     height: 40,
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#B0B4BA',
     alignItems: 'center',
@@ -395,7 +399,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 360,
-    borderRadius: Spacing.three,
+    borderRadius: BorderRadius.md,
     padding: Spacing.three,
     gap: Spacing.two,
   },
@@ -409,7 +413,7 @@ const styles = StyleSheet.create({
   },
   reasonInput: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
@@ -420,7 +424,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   modalButton: {
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
   },

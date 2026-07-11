@@ -13,7 +13,7 @@ import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { Colors, MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
+import { BorderRadius, Colors, MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
 
 export default function AppTabs() {
   return (
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   innerContainer: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.five,
+    borderRadius: BorderRadius.xl,
     flexDirection: 'row',
     alignItems: 'center',
     flexGrow: 1,
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   tabButtonView: {
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: BorderRadius.md,
   },
   settingsPressable: {
     flexDirection: 'row',

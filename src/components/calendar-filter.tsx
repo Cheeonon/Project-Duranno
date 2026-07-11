@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
 
 export type CalendarFilterCategory = 'birthdays' | 'events';
 
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '50%',
     maxWidth: 256,
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     padding: Spacing.two,
     gap: Spacing.one,
   },
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: Spacing.one,
+    borderRadius: Spacing.half,
     paddingVertical: Spacing.one,
     paddingHorizontal: 6,
     gap: 4,
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   colorDot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: 2,
   },
   optionLabel: {
     flex: 1,
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 14,
     height: 14,
-    borderRadius: 3,
+    borderRadius: 2,
     borderWidth: 1,
     borderColor: '#B0B4BA',
     alignItems: 'center',

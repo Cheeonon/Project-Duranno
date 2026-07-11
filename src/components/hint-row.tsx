@@ -4,7 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { Spacing } from '@/constants/theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
 
 type HintRowProps = {
   title?: string;
@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   codeSnippet: {
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     paddingVertical: Spacing.half,
     paddingHorizontal: Spacing.two,
   },

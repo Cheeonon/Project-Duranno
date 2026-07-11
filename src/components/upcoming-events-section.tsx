@@ -11,7 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getUpcomingEvents, type UpcomingEvent } from '@/constants/calendar-demo';
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
-import { Spacing } from '@/constants/theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
 
 function getCategoryColor(category: UpcomingEvent['category']) {
   return CALENDAR_FILTER_OPTIONS.find((option) => option.id === category)?.color ?? '#22C55E';
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   toggleBadge: {
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     paddingVertical: Spacing.half,
     paddingHorizontal: Spacing.two,
   },
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   eventCard: {
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     padding: Spacing.two,
     gap: 4,
   },
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   categoryBadge: {
-    borderRadius: 4,
+    borderRadius: 3,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   emptyState: {
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     padding: Spacing.three,
     alignItems: 'center',
   },

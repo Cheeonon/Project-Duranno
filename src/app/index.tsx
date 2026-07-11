@@ -13,7 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 import { DEMO_CURRENT_USER } from '@/constants/user-demo';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BorderRadius, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { TextSizeControl } from '@/components/text-size-control';
 import { HomeTextScaleProvider } from '@/contexts/home-text-scale';
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
@@ -133,6 +133,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    borderRadius: BorderRadius.lg,
   },
 });

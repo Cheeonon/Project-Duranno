@@ -6,7 +6,7 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
-import { Spacing } from '@/constants/theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
 
 type ToggleHintRowProps = {
   title: string;
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   toggleBadge: {
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     paddingVertical: Spacing.half,
     paddingHorizontal: Spacing.two,
   },

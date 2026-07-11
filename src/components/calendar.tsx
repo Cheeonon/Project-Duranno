@@ -8,7 +8,7 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getDayEvents, getDayMarkers } from '@/constants/calendar-demo';
-import { Spacing } from '@/constants/theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     maxWidth: 512,
-    borderRadius: Spacing.three,
+    borderRadius: BorderRadius.md,
     padding: 19,
     gap: 13,
   },
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   eventPanel: {
-    borderRadius: Spacing.two,
+    borderRadius: BorderRadius.sm,
     padding: Spacing.two,
     gap: Spacing.two,
   },
