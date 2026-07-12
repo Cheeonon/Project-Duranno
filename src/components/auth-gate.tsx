@@ -1,13 +1,9 @@
 import { Slot, useRouter, useSegments } from 'expo-router';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect } from 'react';
 
 import { useAuth } from '@/contexts/auth-context';
 
-type AuthGateProps = {
-  children: ReactNode;
-};
-
-export function AuthGate({ children }: AuthGateProps) {
+export function AuthGate() {
   const { user, isReady } = useAuth();
   const router = useRouter();
   const segments = useSegments();
@@ -36,9 +32,5 @@ export function AuthGate({ children }: AuthGateProps) {
     return null;
   }
 
-  if (!user) {
-    return <Slot />;
-  }
-
-  return children;
+  return <Slot />;
 }

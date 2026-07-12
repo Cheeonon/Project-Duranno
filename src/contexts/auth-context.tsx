@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { DEMO_AUTH_USERS, findDemoUserByLoginId, normalizeLoginId, type AuthUser } from '@/constants/auth-demo';
+import { DEMO_AUTH_USERS, findDemoUserByLoginId, resolveLoginId, type AuthUser } from '@/constants/auth-demo';
 import {
   clearAuthSession,
   loadPersistedUserId,
@@ -67,14 +67,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (loginId: string, password: string, stayLoggedIn = false) => {
-    const normalizedId = normalizeLoginId(loginId);
+    const resolvedId = resolveLoginId(loginId);
     const trimmedPassword = password.trim();
 
-    if (!normalizedId || !trimmedPassword) {
+    if (!resolvedId || !trimmedPassword) {
       return { success: false, error: '아이디와 비밀번호를 입력해 주세요.' };
     }
 
-    const matchedUser = findDemoUserByLoginId(normalizedId);
+    const matchedUser = findDemoUserByLoginId(resolvedId);
 
     if (!matchedUser) {
       return { success: false, error: '아이디 또는 비밀번호가 틀렸습니다.' };
@@ -87,7 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setUser(userWithPassword);
-    await saveAuthSession(userWithPassword.id, stayLoggedIn);
+
+    try {
+      await saveAuthSession(userWithPassword.id, stayLoggedIn);
+    } catch {
+      setUser(null);
+      return { success: false, error: '로그인 정보를 저장하지 못했습니다. 다시 시도해 주세요.' };
+    }
+
     return { success: true };
   }, []);
 

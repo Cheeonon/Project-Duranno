@@ -18,7 +18,7 @@ export const DEMO_AUTH_USERS: AuthUser[] = [
   },
   {
     id: 'user-2',
-    loginId: 'eunhye',
+    loginId: 'euhye',
     password: 'demo1234',
     firstName: '은혜',
     fullName: '이은혜',
@@ -26,14 +26,28 @@ export const DEMO_AUTH_USERS: AuthUser[] = [
   },
 ];
 
+const LOGIN_ID_ALIASES: Record<string, string> = {
+  eunhye: 'euhye',
+};
+
 export function normalizeLoginId(loginId: string) {
   return loginId.trim().toLowerCase();
 }
 
-export function findDemoUserByLoginId(loginId: string) {
+export function resolveLoginId(loginId: string) {
   const normalizedId = normalizeLoginId(loginId);
 
-  return DEMO_AUTH_USERS.find((user) => user.loginId.toLowerCase() === normalizedId);
+  if (DEMO_AUTH_USERS.some((user) => user.loginId.toLowerCase() === normalizedId)) {
+    return normalizedId;
+  }
+
+  return LOGIN_ID_ALIASES[normalizedId] ?? normalizedId;
+}
+
+export function findDemoUserByLoginId(loginId: string) {
+  const resolvedId = resolveLoginId(loginId);
+
+  return DEMO_AUTH_USERS.find((user) => user.loginId.toLowerCase() === resolvedId);
 }
 
 export function findDemoUser(loginId: string, password: string) {

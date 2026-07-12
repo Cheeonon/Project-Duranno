@@ -34,15 +34,19 @@ export default function LoginScreen() {
   }, []);
 
   const handleLogin = async () => {
-    const result = await login(loginId, password, stayLoggedIn);
+    try {
+      const result = await login(loginId, password, stayLoggedIn);
 
-    if (!result.success) {
-      setErrorMessage(result.error ?? '로그인에 실패했습니다.');
-      return;
+      if (!result.success) {
+        setErrorMessage(result.error ?? '로그인에 실패했습니다.');
+        return;
+      }
+
+      setErrorMessage('');
+      router.replace('/');
+    } catch {
+      setErrorMessage('로그인 처리 중 오류가 발생했습니다. 다시 시도해 주세요.');
     }
-
-    setErrorMessage('');
-    router.replace('/');
   };
 
   return (
@@ -84,7 +88,7 @@ export default function LoginScreen() {
                   autoCorrect={false}
                   autoComplete="username"
                   spellCheck={false}
-                  placeholder="예: minsu (대소문자 구분 없음)"
+                  placeholder="예: minsu, euhye (대소문자 구분 없음)"
                   placeholderTextColor={theme.textSecondary}
                   returnKeyType="next"
                   style={[
@@ -173,6 +177,9 @@ export default function LoginScreen() {
                   {user.fullName} · {user.loginId} / {user.password}
                 </ThemedText>
               ))}
+              <ThemedText type="small" themeColor="textSecondary" style={styles.demoHint}>
+                Settings에서 비밀번호를 변경했다면, 변경한 비밀번호로 로그인하세요.
+              </ThemedText>
             </ThemedView>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -293,6 +300,12 @@ const styles = StyleSheet.create({
   demoLine: {
     fontSize: 12,
     lineHeight: 18,
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  demoHint: {
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: Spacing.one,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   pressed: {
