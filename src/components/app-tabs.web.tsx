@@ -6,7 +6,6 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { Link } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
 
@@ -26,6 +25,9 @@ export default function AppTabs() {
           </TabTrigger>
           <TabTrigger name="explore" href="/explore" asChild>
             <TabButton>달력</TabButton>
+          </TabTrigger>
+          <TabTrigger name="settings" href="/settings" asChild>
+            <SettingsTabButton />
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -47,10 +49,29 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
   );
 }
 
-export function CustomTabList(props: TabListProps) {
+export function SettingsTabButton({ isFocused, ...props }: TabTriggerSlotProps) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
 
+  return (
+    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
+      <ThemedView
+        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
+        style={styles.settingsTabButton}>
+        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+          Settings
+        </ThemedText>
+        <SymbolView
+          tintColor={isFocused ? colors.text : colors.textSecondary}
+          name={{ ios: 'gearshape', web: 'gear' }}
+          size={12}
+        />
+      </ThemedView>
+    </Pressable>
+  );
+}
+
+export function CustomTabList(props: TabListProps) {
   return (
     <View {...props} style={styles.tabListContainer}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
@@ -59,17 +80,6 @@ export function CustomTabList(props: TabListProps) {
         </ThemedText>
 
         {props.children}
-
-        <Link href="/settings" asChild>
-          <Pressable style={styles.settingsPressable}>
-            <ThemedText type="link">Settings</ThemedText>
-            <SymbolView
-              tintColor={colors.text}
-              name={{ ios: 'gearshape', web: 'gear' }}
-              size={12}
-            />
-          </Pressable>
-        </Link>
       </ThemedView>
     </View>
   );
@@ -105,11 +115,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     borderRadius: BorderRadius.md,
   },
-  settingsPressable: {
+  settingsTabButton: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
     gap: Spacing.one,
-    marginLeft: Spacing.three,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    borderRadius: BorderRadius.md,
   },
 });

@@ -1,27 +1,270 @@
-import { Platform, ScrollView, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BorderRadius, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const router = useRouter();
+  const { user, logout, changePassword } = useAuth();
+  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/login');
+  };
+
+  const resetPasswordForm = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
+    setPasswordSuccess('');
+  };
+
+  const openPasswordModal = () => {
+    resetPasswordForm();
+    setIsPasswordModalVisible(true);
+  };
+
+  const closePasswordModal = () => {
+    setIsPasswordModalVisible(false);
+    resetPasswordForm();
+  };
+
+  const clearPasswordFeedback = () => {
+    setPasswordError('');
+    setPasswordSuccess('');
+  };
+
+  const handleChangePassword = async () => {
+    if (passwordSuccess) {
+      closePasswordModal();
+      return;
+    }
+
+    const result = await changePassword(currentPassword, newPassword, confirmPassword);
+
+    if (!result.success) {
+      setPasswordSuccess('');
+      setPasswordError(result.error ?? '비밀번호 변경에 실패했습니다.');
+      return;
+    }
+
+    setPasswordError('');
+    setPasswordSuccess('비밀번호가 변경되었습니다.');
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
 
   return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentContainerStyle={styles.contentContainer}>
-      <ThemedView style={styles.container}>
-        <ThemedText type="subtitle">Settings</ThemedText>
-        <ThemedText style={styles.description} themeColor="textSecondary">
-          설정 기능은 곧 추가될 예정입니다.
-        </ThemedText>
+    <>
+      <ScrollView
+        style={[styles.scrollView, { backgroundColor: theme.background }]}
+        contentContainerStyle={styles.contentContainer}>
+        <ThemedView style={styles.container}>
+          <ThemedText type="subtitle">Settings</ThemedText>
+          <ThemedText style={styles.description} themeColor="textSecondary">
+            계정과 앱 설정을 관리할 수 있습니다.
+          </ThemedText>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
+          <ThemedView type="backgroundElement" style={styles.sectionCard}>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
+              계정
+            </ThemedText>
+
+            {user ? (
+              <>
+                <ThemedText type="smallBold" style={styles.accountName}>
+                  {user.fullName}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.accountRole}>
+                  {user.role}
+                </ThemedText>
+                <Pressable
+                  accessibilityLabel="비밀번호 변경"
+                  onPress={openPasswordModal}
+                  style={({ pressed }) => [styles.changePasswordButton, pressed && styles.pressed]}>
+                  <ThemedText type="smallBold" style={styles.changePasswordButtonText}>
+                    비밀번호 변경
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="로그아웃"
+                  onPress={handleLogout}
+                  style={({ pressed }) => [styles.logoutButton, pressed && styles.pressed]}>
+                  <ThemedText type="smallBold" style={styles.logoutButtonText}>
+                    로그아웃
+                  </ThemedText>
+                </Pressable>
+              </>
+            ) : (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.accountRole}>
+                로그인된 계정이 없습니다.
+              </ThemedText>
+            )}
+          </ThemedView>
+
+          <ThemedView type="backgroundElement" style={styles.sectionCard}>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
+              앱 설정
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.accountRole}>
+              추가 설정은 곧 제공될 예정입니다.
+            </ThemedText>
+          </ThemedView>
+
+          {Platform.OS === 'web' && <WebBadge />}
+        </ThemedView>
+      </ScrollView>
+
+      <Modal
+        visible={isPasswordModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closePasswordModal}>
+        <Pressable style={styles.modalOverlay} onPress={closePasswordModal}>
+          <View
+            style={[styles.modalCard, { backgroundColor: theme.background }]}
+            onStartShouldSetResponder={() => true}>
+            <ThemedText type="smallBold" style={styles.modalTitle}>
+              비밀번호 변경
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.modalSubtitle}>
+              {user?.fullName}
+            </ThemedText>
+
+            {passwordSuccess ? (
+              <ThemedText type="small" style={styles.successText}>
+                {passwordSuccess}
+              </ThemedText>
+            ) : (
+              <>
+                <View style={styles.fieldGroup}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+                    현재 비밀번호
+                  </ThemedText>
+                  <TextInput
+                    value={currentPassword}
+                    onChangeText={(text) => {
+                      setCurrentPassword(text);
+                      clearPasswordFeedback();
+                    }}
+                    placeholder="현재 비밀번호 입력"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoFocus
+                    style={[
+                      styles.input,
+                      {
+                        color: theme.text,
+                        backgroundColor: theme.backgroundElement,
+                        borderColor: theme.backgroundSelected,
+                      },
+                    ]}
+                  />
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+                    새 비밀번호
+                  </ThemedText>
+                  <TextInput
+                    value={newPassword}
+                    onChangeText={(text) => {
+                      setNewPassword(text);
+                      clearPasswordFeedback();
+                    }}
+                    placeholder="새 비밀번호 입력 (4자 이상)"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={[
+                      styles.input,
+                      {
+                        color: theme.text,
+                        backgroundColor: theme.backgroundElement,
+                        borderColor: theme.backgroundSelected,
+                      },
+                    ]}
+                  />
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+                    새 비밀번호 확인
+                  </ThemedText>
+                  <TextInput
+                    value={confirmPassword}
+                    onChangeText={(text) => {
+                      setConfirmPassword(text);
+                      clearPasswordFeedback();
+                    }}
+                    placeholder="새 비밀번호 다시 입력"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    onSubmitEditing={handleChangePassword}
+                    style={[
+                      styles.input,
+                      {
+                        color: theme.text,
+                        backgroundColor: theme.backgroundElement,
+                        borderColor: theme.backgroundSelected,
+                      },
+                    ]}
+                  />
+                </View>
+
+                {passwordError ? (
+                  <ThemedText type="small" style={styles.errorText}>
+                    {passwordError}
+                  </ThemedText>
+                ) : null}
+              </>
+            )}
+
+            <View style={styles.modalActions}>
+              <Pressable
+                onPress={closePasswordModal}
+                style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  취소
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={handleChangePassword}
+                style={({ pressed }) => [
+                  styles.modalButton,
+                  styles.modalButtonPrimary,
+                  pressed && styles.pressed,
+                ]}>
+                <ThemedText type="smallBold" style={styles.modalButtonPrimaryText}>
+                  {passwordSuccess ? '확인' : '변경'}
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -44,5 +287,107 @@ const styles = StyleSheet.create({
   },
   description: {
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  sectionCard: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.four,
+    gap: Spacing.two,
+  },
+  sectionTitle: {
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  accountName: {
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  accountRole: {
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  fieldGroup: {
+    gap: Spacing.one,
+  },
+  label: {
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  input: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    fontSize: 14,
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  successText: {
+    color: '#22C55E',
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  changePasswordButton: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    borderRadius: BorderRadius.md,
+    backgroundColor: '#22C55E',
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    marginTop: Spacing.two,
+  },
+  changePasswordButtonText: {
+    color: '#FFFFFF',
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  logoutButton: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    borderRadius: BorderRadius.md,
+    backgroundColor: '#EF4444',
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+  },
+  logoutButtonText: {
+    color: '#FFFFFF',
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.four,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.four,
+    gap: Spacing.two,
+  },
+  modalTitle: {
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  modalSubtitle: {
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+  },
+  modalButton: {
+    borderRadius: BorderRadius.sm,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+  },
+  modalButtonPrimary: {
+    backgroundColor: '#22C55E',
+  },
+  modalButtonPrimaryText: {
+    color: '#FFFFFF',
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

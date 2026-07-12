@@ -9,16 +9,17 @@ import { MemberSearchPanel } from '@/components/member-search-panel';
 import { HintRow } from '@/components/hint-row';
 import { ToggleHintRow } from '@/components/toggle-hint-row';
 import { UpcomingEventsSection } from '@/components/upcoming-events-section';
+import { TextSizeControl } from '@/components/text-size-control';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
-import { DEMO_CURRENT_USER } from '@/constants/user-demo';
 import { BorderRadius, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { TextSizeControl } from '@/components/text-size-control';
+import { useAuth } from '@/contexts/auth-context';
 import { HomeTextScaleProvider } from '@/contexts/home-text-scale';
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
 
 export default function HomeScreen() {
+  const { user } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
   const { handleScroll, preserveScrollPosition } = usePreservedCollapse(scrollRef);
   const [showAttendance, setShowAttendance] = useState(false);
@@ -48,7 +49,7 @@ export default function HomeScreen() {
               <AnimatedIcon />
               <ThemedText type="subtitle" style={styles.greeting}>
                 소중한{' '}
-                <AnimatedUserName name={DEMO_CURRENT_USER.firstName} />
+                <AnimatedUserName name={user?.firstName ?? '성도'} />
                 님,{'\n'}
                 오늘도 교회를 위해 함께 해주셔서 감사해요.
               </ThemedText>
