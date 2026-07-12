@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   Easing,
@@ -20,24 +20,27 @@ export function CollapsiblePanel({ isOpen, children }: CollapsiblePanelProps) {
   const contentHeight = useSharedValue(0);
   const animatedHeight = useSharedValue(0);
   const opacity = useSharedValue(0);
+  const lockedHeightRef = useRef<number | null>(null);
 
   const onLayout = (event: LayoutChangeEvent) => {
     const nextHeight = event.nativeEvent.layout.height;
+    contentHeight.value = nextHeight;
 
-    if (nextHeight === contentHeight.value) {
+    if (!isOpen || lockedHeightRef.current !== null) {
       return;
     }
 
-    contentHeight.value = nextHeight;
-
-    if (isOpen) {
+    if (nextHeight > 0) {
+      lockedHeightRef.current = nextHeight;
       animatedHeight.value = nextHeight;
     }
   };
 
   useEffect(() => {
     if (isOpen) {
-      animatedHeight.value = withTiming(contentHeight.value, {
+      const targetHeight = lockedHeightRef.current ?? contentHeight.value;
+
+      animatedHeight.value = withTiming(targetHeight, {
         duration: ANIMATION_DURATION,
         easing: Easing.out(Easing.cubic),
       });
@@ -45,6 +48,7 @@ export function CollapsiblePanel({ isOpen, children }: CollapsiblePanelProps) {
       return;
     }
 
+    lockedHeightRef.current = null;
     animatedHeight.value = withTiming(0, {
       duration: ANIMATION_DURATION,
       easing: Easing.out(Easing.cubic),

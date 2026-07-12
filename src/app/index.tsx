@@ -29,64 +29,64 @@ export default function HomeScreen() {
       <ThemedView style={styles.container}>
         <TextSizeControl />
         <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          ref={scrollRef}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets={false}
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            {
-              paddingTop: Spacing.two,
-              paddingBottom: BottomTabInset + Spacing.five,
-            },
-          ]}
-          showsVerticalScrollIndicator={false}>
-          <ThemedView style={styles.heroSection}>
-            <AnimatedIcon />
-            <ThemedText type="subtitle" style={styles.greeting}>
-              소중한{' '}
-              <AnimatedUserName name={DEMO_CURRENT_USER.firstName} />
-              님,{'\n'}
-              오늘도 교회를 위해 함께 해주셔서 감사해요.
+          <ScrollView
+            ref={scrollRef}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets={false}
+            style={styles.scrollView}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingTop: Spacing.two,
+                paddingBottom: BottomTabInset + Spacing.five,
+              },
+            ]}
+            showsVerticalScrollIndicator={false}>
+            <ThemedView style={styles.heroSection}>
+              <AnimatedIcon />
+              <ThemedText type="subtitle" style={styles.greeting}>
+                소중한{' '}
+                <AnimatedUserName name={DEMO_CURRENT_USER.firstName} />
+                님,{'\n'}
+                오늘도 교회를 위해 함께 해주셔서 감사해요.
+              </ThemedText>
+            </ThemedView>
+
+            <ThemedText type="code" style={styles.code}>
+              get started
             </ThemedText>
-          </ThemedView>
 
-          <ThemedText type="code" style={styles.code}>
-            get started
-          </ThemedText>
+            <ThemedView type="backgroundElement" style={styles.stepContainer}>
+              <UpcomingEventsSection scrollRef={scrollRef} />
 
-          <ThemedView type="backgroundElement" style={styles.stepContainer}>
-            <UpcomingEventsSection scrollRef={scrollRef} />
+              <ToggleHintRow
+                title="출결"
+                isOpen={showAttendance}
+                onToggle={() => setShowAttendance((current) => !current)}
+                hint={showAttendance ? '접기' : '셀그룹 보기'}
+                scrollRef={scrollRef}>
+                <AttendancePanel />
+              </ToggleHintRow>
 
-            <ToggleHintRow
-              title="출결"
-              isOpen={showAttendance}
-              onToggle={() => setShowAttendance((current) => !current)}
-              hint={showAttendance ? '접기' : '셀그룹 보기'}
-              scrollRef={scrollRef}>
-              <AttendancePanel />
-            </ToggleHintRow>
+              <ToggleHintRow
+                title="교인 검색"
+                isOpen={showMemberSearch}
+                onToggle={() => setShowMemberSearch((current) => !current)}
+                hint={showMemberSearch ? '접기' : '검색하기'}
+                scrollRef={scrollRef}>
+                <MemberSearchPanel
+                  scrollRef={scrollRef}
+                  preserveScrollPosition={preserveScrollPosition}
+                />
+              </ToggleHintRow>
 
-            <ToggleHintRow
-              title="교인 검색"
-              isOpen={showMemberSearch}
-              onToggle={() => setShowMemberSearch((current) => !current)}
-              hint={showMemberSearch ? '접기' : '검색하기'}
-              scrollRef={scrollRef}>
-              <MemberSearchPanel
-                scrollRef={scrollRef}
-                preserveScrollPosition={preserveScrollPosition}
-              />
-            </ToggleHintRow>
+              <HintRow title="나중에 추가할 메뉴" />
+            </ThemedView>
 
-            <HintRow title="나중에 추가할 메뉴" />
-          </ThemedView>
-
-          {Platform.OS === 'web' && <WebBadge />}
-        </ScrollView>
+            {Platform.OS === 'web' && <WebBadge />}
+          </ScrollView>
         </SafeAreaView>
       </ThemedView>
     </HomeTextScaleProvider>
