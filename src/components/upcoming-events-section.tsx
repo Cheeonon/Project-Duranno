@@ -11,7 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getUpcomingEvents, type UpcomingEvent } from '@/constants/calendar-demo';
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
-import { BorderRadius, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 
 function getCategoryColor(category: UpcomingEvent['category']) {
   return CALENDAR_FILTER_OPTIONS.find((option) => option.id === category)?.color ?? '#22C55E';
@@ -64,7 +64,7 @@ export function UpcomingEventsSection({ scrollRef }: UpcomingEventsSectionProps)
   };
 
   return (
-    <View style={styles.wrapper}>
+    <ThemedView type="backgroundSelected" style={styles.wrapper}>
       <Pressable
         ref={headerRef}
         accessibilityLabel={`Upcoming Events ${isOpen ? '접기' : '펼치기'}`}
@@ -83,7 +83,9 @@ export function UpcomingEventsSection({ scrollRef }: UpcomingEventsSectionProps)
           </ThemedText>
         </View>
 
-        <ThemedView type="backgroundSelected" style={styles.toggleBadge}>
+        <ThemedView
+          type="background"
+          style={[styles.toggleBadge, isOpen && styles.toggleBadgeOpen]}>
           <ThemedText type="small" themeColor="textSecondary">
             {isOpen ? '접기' : `${upcomingEvents.length}건`}
           </ThemedText>
@@ -102,7 +104,7 @@ export function UpcomingEventsSection({ scrollRef }: UpcomingEventsSectionProps)
             upcomingEvents.map((event) => (
               <ThemedView
                 key={`${event.date.toISOString()}-${event.title}`}
-                type="backgroundSelected"
+                type="background"
                 style={styles.eventCard}>
                 <View style={styles.eventHeader}>
                   <ThemedText type="smallBold" style={styles.eventDate}>
@@ -122,7 +124,7 @@ export function UpcomingEventsSection({ scrollRef }: UpcomingEventsSectionProps)
               </ThemedView>
             ))
           ) : (
-            <ThemedView type="backgroundSelected" style={styles.emptyState}>
+            <ThemedView type="background" style={styles.emptyState}>
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                 선택한 필터에 해당하는 일정이 없습니다.
               </ThemedText>
@@ -130,13 +132,15 @@ export function UpcomingEventsSection({ scrollRef }: UpcomingEventsSectionProps)
           )}
         </View>
       </CollapsiblePanel>
-    </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
     gap: Spacing.two,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.three,
   },
   headerRow: {
     flexDirection: 'row',
@@ -152,7 +156,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   previewText: {
-    fontSize: 10,
+    fontSize: FontSize.micro,
     lineHeight: 13,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
@@ -163,6 +167,12 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     paddingVertical: Spacing.half,
     paddingHorizontal: Spacing.two,
+  },
+  toggleBadgeOpen: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   eventsList: {
     gap: Spacing.one,
@@ -180,7 +190,7 @@ const styles = StyleSheet.create({
   },
   eventDate: {
     flex: 1,
-    fontSize: 10,
+    fontSize: FontSize.micro,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   categoryBadge: {
@@ -190,16 +200,16 @@ const styles = StyleSheet.create({
   },
   categoryBadgeText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: FontSize.micro,
     fontWeight: '700',
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   eventTitle: {
-    fontSize: 11,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   eventDetail: {
-    fontSize: 10,
+    fontSize: FontSize.micro,
     lineHeight: 13,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
@@ -209,7 +219,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 10,
+    fontSize: FontSize.micro,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   pressed: {

@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BorderRadius, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 
 export type CalendarFilterCategory = 'birthdays' | 'events';
 
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   title: {
-    fontSize: 11,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   optionsRow: {
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   optionLabel: {
     flex: 1,
-    fontSize: 9,
+    fontSize: FontSize.micro,
     lineHeight: 12,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
@@ -142,12 +142,12 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: FontSize.micro,
     lineHeight: 12,
     fontWeight: '700',
   },
   demoNote: {
-    fontSize: 10,
+    fontSize: FontSize.micro,
     textTransform: 'uppercase',
   },
   pressed: {

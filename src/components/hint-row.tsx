@@ -14,10 +14,12 @@ type HintRowProps = {
 export function HintRow({ title = 'Try editing', hint }: HintRowProps) {
   return (
     <View style={styles.stepRow}>
-      <ThemedText type="small">{title}</ThemedText>
+      <ThemedText type="smallBold">{title}</ThemedText>
       {hint ? (
         <ThemedView type="backgroundSelected" style={styles.codeSnippet}>
-          <ThemedText themeColor="textSecondary">{hint}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {hint}
+          </ThemedText>
         </ThemedView>
       ) : null}
     </View>
@@ -27,6 +29,7 @@ export function HintRow({ title = 'Try editing', hint }: HintRowProps) {
 const styles = StyleSheet.create({
   stepRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
   codeSnippet: {

@@ -1,12 +1,17 @@
 # Project Tech Stack
-- Frontend: React Native (Expo)
-- Language: TypeScript
-- Styling: Tailwind CSS (NativeWind v4+)
-- Backend/Database: Supabase
+- Frontend: React Native (Expo SDK ~57, Expo Router, typed routes, react compiler enabled)
+- Language: TypeScript (strict)
+- Styling: StyleSheet.create + theme tokens in src/constants/theme.ts (Colors, Fonts, Spacing, BorderRadius). No NativeWind/Tailwind — not installed, don't use it.
+- Backend/Database: Supabase (@supabase/supabase-js), session persisted via AsyncStorage
 
 # Rules & Guidelines
 - Always use TypeScript with strict type checking.
 - Use functional components and hooks.
-- Follow Tailwind (NativeWind) patterns for styling. Do not use StyleSheet.create unless absolutely necessary.
+- Style with StyleSheet.create and the theme tokens in src/constants/theme.ts; support light/dark via useColorScheme.
 - Write clean, modular, and reusable code.
 - Ensure cross-platform compatibility (iOS, Android, and Web).
+- Path aliases: @/* -> src/*, @/assets/* -> assets/*.
+- UI copy is in Korean — keep new user-facing strings in Korean unless told otherwise.
+- Auth: src/app/_layout.tsx gates routes via Stack.Protected based on session from useAuth() (src/contexts/auth-context.tsx). New authenticated screens go under src/app/(app)/; public screens go alongside login.tsx at src/app/.
+- Domain: ChurchPosition (직분: brother/sister/deacon/deaconess/elder) and MemberRole (역할/permission: newcomerTeam/cellLeader/teacher/finance/minister) are distinct — don't conflate them (src/types/member.ts).
+- supabase/migrations/ is hand-run SQL (no migration CLI). Add new numbered migration files rather than editing past ones.

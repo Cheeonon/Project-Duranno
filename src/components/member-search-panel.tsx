@@ -3,15 +3,11 @@ import { ScrollView, StyleSheet, TextInput, View, type ScrollView as ScrollViewT
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import {
-  DEMO_CHURCH_MEMBERS,
-  POSITION_LABELS,
-  formatMemberDob,
-  searchChurchMembers,
-} from '@/constants/members-demo';
-import { BorderRadius, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
+import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
+import { formatMemberDob, searchChurchMembers } from '@/lib/member-search';
 
 const RESULTS_MAX_HEIGHT = 320;
 
@@ -24,8 +20,9 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
   const theme = useTheme();
   const { scaled } = useHomeTextScale();
   const [query, setQuery] = useState('');
+  const { members, isLoading, error } = useMembers();
 
-  const results = useMemo(() => searchChurchMembers(query), [query]);
+  const results = useMemo(() => searchChurchMembers(query, members), [query, members]);
 
   const lockScrollPosition = () => {
     if (!scrollRef || !preserveScrollPosition) {
@@ -61,13 +58,13 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
             color: theme.text,
             backgroundColor: theme.background,
             borderColor: theme.backgroundSelected,
-            fontSize: scaled(14),
+            fontSize: scaled(FontSize.default),
           },
         ]}
       />
 
       <ThemedText type="code" themeColor="textSecondary" style={styles.resultCount}>
-        {results.length}명 검색됨
+        {isLoading ? '불러오는 중...' : `${results.length}명 검색됨`}
       </ThemedText>
 
       <ScrollView
@@ -84,7 +81,7 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
                   {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
                 </ThemedText>
                 <ThemedText type="code" themeColor="textSecondary" style={styles.memberRole}>
-                  {POSITION_LABELS[member.position]}
+                  {member.position}
                 </ThemedText>
               </View>
 
@@ -107,14 +104,14 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
         ) : (
           <ThemedView type="background" style={styles.emptyState}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-              검색 결과가 없습니다.
+              {isLoading ? '불러오는 중...' : (error ?? '검색 결과가 없습니다.')}
             </ThemedText>
           </ThemedView>
         )}
       </ScrollView>
 
       <ThemedText type="code" themeColor="textSecondary" style={styles.demoNote}>
-        Demo · 총 {DEMO_CHURCH_MEMBERS.length}명 등록
+        총 {members.length}명 등록
       </ThemedText>
     </ThemedView>
   );
@@ -127,11 +124,11 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   headerTitle: {
-    fontSize: 13,
+    fontSize: FontSize.small,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   headerSubtitle: {
-    fontSize: 11,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   searchInput: {
@@ -142,7 +139,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   resultCount: {
-    fontSize: 10,
+    fontSize: FontSize.micro,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   resultsScroll: {
@@ -165,18 +162,18 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   memberName: {
-    fontSize: 14,
+    fontSize: FontSize.body,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   memberRole: {
-    fontSize: 11,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   resultDetails: {
     gap: 4,
   },
   detailText: {
-    fontSize: 12,
+    fontSize: FontSize.caption,
     lineHeight: 17,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
@@ -186,11 +183,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 12,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   demoNote: {
-    fontSize: 10,
+    fontSize: FontSize.micro,
     textAlign: 'center',
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },

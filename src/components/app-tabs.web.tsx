@@ -38,7 +38,7 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
+        style={[styles.tabButtonView, isFocused && styles.tabButtonViewFocused]}>
         <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
           {children}
         </ThemedText>
@@ -62,10 +62,10 @@ export function CustomTabList(props: TabListProps) {
 
         <Link href="/settings" asChild>
           <Pressable style={styles.settingsPressable}>
-            <ThemedText type="link">Settings</ThemedText>
+            <ThemedText type="link">설정</ThemedText>
             <SymbolView
               tintColor={colors.text}
-              name={{ ios: 'gearshape', web: 'gear' }}
+              name={{ ios: 'gearshape', web: 'settings' }}
               size={12}
             />
           </Pressable>
@@ -104,6 +104,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: BorderRadius.md,
+  },
+  tabButtonViewFocused: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   settingsPressable: {
     flexDirection: 'row',

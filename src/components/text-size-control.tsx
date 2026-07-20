@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
-import { Colors, Spacing } from '@/constants/theme';
+import { Colors, FontSize, Spacing } from '@/constants/theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 
 export function TextSizeControl() {
@@ -58,9 +58,9 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   button: {
-    width: 18,
-    height: 18,
-    borderRadius: 3,
+    width: 22,
+    height: 22,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -68,19 +68,19 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   buttonText: {
-    fontSize: 8,
-    lineHeight: 10,
+    fontSize: FontSize.micro,
+    lineHeight: 14,
     fontWeight: '700',
   },
   buttonTextLarge: {
-    fontSize: 9,
-    lineHeight: 10,
+    fontSize: FontSize.micro,
+    lineHeight: 14,
     fontWeight: '700',
   },
   label: {
     minWidth: 28,
     textAlign: 'center',
-    fontSize: 8,
+    fontSize: FontSize.micro,
     fontWeight: '500',
   },
   pressed: {

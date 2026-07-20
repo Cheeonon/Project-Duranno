@@ -1,8 +1,3 @@
-export const DEMO_CELL_GROUP = {
-  name: '요한 셀',
-  leader: '김민수 집사',
-};
-
 export function getSundaysInMonth(year: number, month: number) {
   const sundays: Date[] = [];
   const date = new Date(year, month, 1);
@@ -23,4 +18,13 @@ export function formatAttendanceDate(date: Date) {
 
 export function getAttendanceKey(memberId: string, date: Date) {
   return `${memberId}-${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+// YYYY-MM-DD in local time — never use Date#toISOString() for this, it converts
+// to UTC first and can shift the calendar date across midnight in KST (UTC+9).
+export function formatDateForDb(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }

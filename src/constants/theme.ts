@@ -68,6 +68,22 @@ export const BorderRadius = {
   xl: 16,
 } as const;
 
+// Standard type scale. 11px is the accepted floor for legible auxiliary text
+// (captions/labels/timestamps) — nothing in the app should render smaller
+// than `micro`. 16px (`default`) is also the minimum for text inputs, since
+// anything below that triggers automatic zoom on iOS Safari.
+export const FontSize = {
+  micro: 11,
+  caption: 12,
+  small: 13,
+  body: 14,
+  default: 16,
+  heading: 20,
+  hero: 22,
+  subtitle: 32,
+  title: 48,
+} as const;
+
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const TopTabInset = Platform.select({ web: Spacing.six + Spacing.three, default: 0 }) ?? 0;
 export const MaxContentWidth = 800;

@@ -8,7 +8,7 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getDayEvents, getDayMarkers } from '@/constants/calendar-demo';
-import { BorderRadius, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
@@ -384,13 +384,13 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   zoomLabel: {
-    fontSize: 9,
+    fontSize: FontSize.micro,
     minWidth: 52,
     textAlign: 'center',
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   monthLabel: {
-    fontSize: 12,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   navButton: {
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
   weekday: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: FontSize.micro,
   },
   grid: {
     flexDirection: 'row',
@@ -463,12 +463,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   expandedEventTitle: {
-    fontSize: 9,
+    fontSize: FontSize.micro,
     lineHeight: 12,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   expandedEventDetail: {
-    fontSize: 8,
+    fontSize: FontSize.micro,
     lineHeight: 11,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
@@ -490,15 +490,15 @@ const styles = StyleSheet.create({
   },
   dayText: {
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: FontSize.micro,
     lineHeight: 14,
   },
   bannerDate: {
-    fontSize: 11,
+    fontSize: FontSize.caption,
     lineHeight: 16,
   },
   bannerTime: {
-    fontSize: 9,
+    fontSize: FontSize.micro,
     lineHeight: 11,
   },
   sundayText: {
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   eventPanelTitle: {
-    fontSize: 10,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   eventList: {
@@ -543,15 +543,15 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   eventCategoryLabel: {
-    fontSize: 8,
+    fontSize: FontSize.micro,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   eventTitle: {
-    fontSize: 10,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   eventDetail: {
-    fontSize: 9,
+    fontSize: FontSize.micro,
     lineHeight: 12,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   },
   footerNote: {
     textAlign: 'center',
-    fontSize: 9,
+    fontSize: FontSize.micro,
     lineHeight: 12,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },

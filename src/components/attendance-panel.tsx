@@ -3,36 +3,50 @@ import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } f
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import {
-  DEMO_CELL_GROUP,
-  formatAttendanceDate,
-  getAttendanceKey,
-  getSundaysInMonth,
-} from '@/constants/attendance-demo';
-import { DEMO_CHURCH_MEMBERS, POSITION_LABELS } from '@/constants/members-demo';
-import { BorderRadius, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
+import { useAttendance } from '@/hooks/use-attendance';
+import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
+import { formatAttendanceDate, getAttendanceKey, getSundaysInMonth } from '@/lib/attendance-dates';
 
 type AbsenceEditorTarget = {
-  key: string;
+  memberId: string;
   memberName: string;
+  date: Date;
   dateLabel: string;
 };
 
 export function AttendancePanel() {
   const theme = useTheme();
   const { scaled } = useHomeTextScale();
+  const { profile } = useAuth();
+  const { members, isLoading: membersLoading, error: membersError } = useMembers();
   const [viewDate, setViewDate] = useState(() => new Date());
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const sundays = useMemo(() => getSundaysInMonth(year, month), [year, month]);
+  const myEffectiveLeaderId = profile ? (profile.cellLeaderId ?? profile.memberId) : null;
   const cellGroupMembers = useMemo(
-    () => DEMO_CHURCH_MEMBERS.filter((member) => member.cellGroup === DEMO_CELL_GROUP.name),
-    [],
+    () => members.filter((member) => (member.cellLeaderId ?? member.id) === myEffectiveLeaderId),
+    [members, myEffectiveLeaderId],
   );
-  const [attendance, setAttendance] = useState<Record<string, boolean>>({});
-  const [absenceReasons, setAbsenceReasons] = useState<Record<string, string>>({});
+  const cellLeader = useMemo(
+    () => cellGroupMembers.find((member) => member.id === myEffectiveLeaderId),
+    [cellGroupMembers, myEffectiveLeaderId],
+  );
+  const memberIds = useMemo(() => cellGroupMembers.map((member) => member.id), [cellGroupMembers]);
+  const {
+    attendance,
+    absenceReasons,
+    isLoading: attendanceLoading,
+    error: attendanceError,
+    setPresent,
+    setAbsenceReason,
+  } = useAttendance(memberIds, sundays);
+  const isLoading = membersLoading || attendanceLoading;
+  const error = membersError ?? attendanceError;
   const [absenceEditor, setAbsenceEditor] = useState<AbsenceEditorTarget | null>(null);
   const [reasonDraft, setReasonDraft] = useState('');
 
@@ -47,30 +61,15 @@ export function AttendancePanel() {
   const toggleAttendance = (memberId: string, date: Date) => {
     const key = getAttendanceKey(memberId, date);
     const wasPresent = Boolean(attendance[key]);
-
-    setAttendance((current) => ({
-      ...current,
-      [key]: !wasPresent,
-    }));
-
-    if (!wasPresent) {
-      setAbsenceReasons((current) => {
-        if (!current[key]) {
-          return current;
-        }
-
-        const next = { ...current };
-        delete next[key];
-        return next;
-      });
-    }
+    setPresent(memberId, date, !wasPresent);
   };
 
   const openAbsenceEditor = (memberId: string, memberName: string, date: Date) => {
     const key = getAttendanceKey(memberId, date);
     setAbsenceEditor({
-      key,
+      memberId,
       memberName,
+      date,
       dateLabel: formatAttendanceDate(date),
     });
     setReasonDraft(absenceReasons[key] ?? '');
@@ -87,24 +86,7 @@ export function AttendancePanel() {
     }
 
     const trimmedReason = reasonDraft.trim();
-
-    if (trimmedReason) {
-      setAbsenceReasons((current) => ({
-        ...current,
-        [absenceEditor.key]: trimmedReason,
-      }));
-      setAttendance((current) => ({
-        ...current,
-        [absenceEditor.key]: false,
-      }));
-    } else {
-      setAbsenceReasons((current) => {
-        const next = { ...current };
-        delete next[absenceEditor.key];
-        return next;
-      });
-    }
-
+    setAbsenceReason(absenceEditor.memberId, absenceEditor.date, trimmedReason || null);
     closeAbsenceEditor();
   };
 
@@ -127,11 +109,17 @@ export function AttendancePanel() {
   return (
     <ThemedView type="backgroundSelected" style={styles.container}>
       <ThemedText type="smallBold" style={styles.headerTitle}>
-        {DEMO_CELL_GROUP.name}
+        {profile?.cellGroup ?? '내 셀'}
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary" style={styles.headerSubtitle}>
-        셀리더 {DEMO_CELL_GROUP.leader}
+        셀리더 {cellLeader ? `${cellLeader.nameKo} ${cellLeader.position}` : '-'}
       </ThemedText>
+
+      {(isLoading || error) && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.headerSubtitle}>
+          {isLoading ? '불러오는 중...' : error}
+        </ThemedText>
+      )}
 
       <View style={styles.monthNavigator}>
         <Pressable
@@ -180,7 +168,7 @@ export function AttendancePanel() {
                   {member.nameKo}
                 </ThemedText>
                 <ThemedText type="code" themeColor="textSecondary" style={styles.memberRole}>
-                  {POSITION_LABELS[member.position]}
+                  {member.position}
                 </ThemedText>
               </View>
 
@@ -220,7 +208,7 @@ export function AttendancePanel() {
       </ScrollView>
 
       <ThemedText type="code" themeColor="textSecondary" style={styles.demoNote}>
-        Demo · 클릭으로 출석 체크 · {Platform.OS === 'web' ? '우클릭' : '길게 눌러'} 결석 사유 입력
+        클릭으로 출석 체크 · {Platform.OS === 'web' ? '우클릭' : '길게 눌러'} 결석 사유 입력
       </ThemedText>
 
       <Modal
@@ -254,7 +242,7 @@ export function AttendancePanel() {
                   color: theme.text,
                   backgroundColor: theme.backgroundElement,
                   borderColor: theme.backgroundSelected,
-                  fontSize: scaled(13),
+                  fontSize: scaled(FontSize.default),
                 },
               ]}
             />
@@ -293,11 +281,11 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   headerTitle: {
-    fontSize: 13,
+    fontSize: FontSize.small,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   headerSubtitle: {
-    fontSize: 11,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   monthNavigator: {
@@ -309,7 +297,7 @@ const styles = StyleSheet.create({
   monthLabel: {
     minWidth: 96,
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   navButton: {
@@ -340,12 +328,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   headerText: {
-    fontSize: 11,
+    fontSize: FontSize.caption,
     textAlign: 'center',
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   sundayLabel: {
-    fontSize: 9,
+    fontSize: FontSize.micro,
     textAlign: 'center',
   },
   nameCell: {
@@ -354,11 +342,11 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   memberName: {
-    fontSize: 12,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   memberRole: {
-    fontSize: 10,
+    fontSize: FontSize.micro,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   attendanceCell: {
@@ -380,7 +368,7 @@ const styles = StyleSheet.create({
     borderColor: '#EF4444',
   },
   checkText: {
-    fontSize: 14,
+    fontSize: FontSize.body,
     color: '#60646C',
   },
   checkTextPresent: {
@@ -404,11 +392,11 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   modalTitle: {
-    fontSize: 14,
+    fontSize: FontSize.body,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   modalSubtitle: {
-    fontSize: 11,
+    fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   reasonInput: {
@@ -436,7 +424,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   demoNote: {
-    fontSize: 10,
+    fontSize: FontSize.micro,
     textAlign: 'center',
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },

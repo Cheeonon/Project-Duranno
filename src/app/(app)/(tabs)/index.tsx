@@ -1,5 +1,6 @@
+import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Platform, ScrollView, StyleSheet } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedIcon } from '@/components/animated-icon';
@@ -12,9 +13,9 @@ import { UpcomingEventsSection } from '@/components/upcoming-events-section';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
-import { DEMO_CURRENT_USER } from '@/constants/user-demo';
-import { BorderRadius, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BorderRadius, BottomTabInset, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
 import { TextSizeControl } from '@/components/text-size-control';
+import { useAuth } from '@/contexts/auth-context';
 import { HomeTextScaleProvider } from '@/contexts/home-text-scale';
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
 
@@ -23,6 +24,7 @@ export default function HomeScreen() {
   const { handleScroll, preserveScrollPosition } = usePreservedCollapse(scrollRef);
   const [showAttendance, setShowAttendance] = useState(false);
   const [showMemberSearch, setShowMemberSearch] = useState(false);
+  const { profile } = useAuth();
 
   return (
     <HomeTextScaleProvider>
@@ -48,7 +50,7 @@ export default function HomeScreen() {
             <AnimatedIcon />
             <ThemedText type="subtitle" style={styles.greeting}>
               소중한{' '}
-              <AnimatedUserName name={DEMO_CURRENT_USER.firstName} />
+              <AnimatedUserName name={profile?.nameKo ?? '성도'} />
               님,{'\n'}
               오늘도 교회를 위해 함께 해주셔서 감사해요.
             </ThemedText>
@@ -82,7 +84,17 @@ export default function HomeScreen() {
               />
             </ToggleHintRow>
 
-            <HintRow title="나중에 추가할 메뉴" />
+            <Link href="/members" asChild>
+              <Pressable>
+                <HintRow title="성도관리" hint="바로가기" />
+              </Pressable>
+            </Link>
+
+            <Link href="/settings" asChild>
+              <Pressable>
+                <HintRow title="설정" hint="바로가기" />
+              </Pressable>
+            </Link>
           </ThemedView>
 
           {Platform.OS === 'web' && <WebBadge />}
@@ -120,7 +132,7 @@ const styles = StyleSheet.create({
   greeting: {
     alignSelf: 'stretch',
     textAlign: 'left',
-    fontSize: 22,
+    fontSize: FontSize.hero,
     lineHeight: 32,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },

@@ -38,7 +38,7 @@ export function ToggleHintRow({
   };
 
   return (
-    <View style={styles.wrapper}>
+    <ThemedView type="backgroundSelected" style={styles.wrapper}>
       <Pressable
         ref={headerRef}
         accessibilityLabel={`${title} ${isOpen ? '닫기' : '열기'}`}
@@ -47,7 +47,9 @@ export function ToggleHintRow({
         <ThemedText type="smallBold" style={styles.title}>
           {title}
         </ThemedText>
-        <ThemedView type="backgroundSelected" style={styles.toggleBadge}>
+        <ThemedView
+          type="background"
+          style={[styles.toggleBadge, isOpen && styles.toggleBadgeOpen]}>
           <ThemedText type="small" themeColor="textSecondary">
             {hint ?? (isOpen ? '닫기' : '열기')}
           </ThemedText>
@@ -55,13 +57,15 @@ export function ToggleHintRow({
       </Pressable>
 
       <CollapsiblePanel isOpen={isOpen}>{children}</CollapsiblePanel>
-    </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
     gap: Spacing.two,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.three,
   },
   stepRow: {
     flexDirection: 'row',
@@ -75,6 +79,12 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     paddingVertical: Spacing.half,
     paddingHorizontal: Spacing.two,
+  },
+  toggleBadgeOpen: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   pressed: {
     opacity: 0.7,
