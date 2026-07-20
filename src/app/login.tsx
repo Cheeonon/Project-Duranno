@@ -1,20 +1,35 @@
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedIcon } from '@/components/animated-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BorderRadius, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+import { getStaySignedInPreference, setStaySignedInPreference } from '@/lib/supabase';
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
   const theme = useTheme();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [staySignedIn, setStaySignedIn] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    getStaySignedInPreference().then(setStaySignedIn);
+  }, []);
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -23,6 +38,7 @@ export default function LoginScreen() {
     }
 
     setSubmitting(true);
+    await setStaySignedInPreference(staySignedIn);
     const { error: signInError } = await signIn(email.trim(), password);
     setSubmitting(false);
 
@@ -35,58 +51,127 @@ export default function LoginScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.formWrapper}>
-          <ThemedText type="subtitle" style={styles.title}>
-            로그인
-          </ThemedText>
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.hero}>
+              <AnimatedIcon />
+              <ThemedText type="subtitle" style={styles.title}>
+                Project Duranno App
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
+                교회를 위한 성도 관리 어플에 오신 것을 환영합니다.
+              </ThemedText>
+            </View>
 
-          <TextInput
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              setError(null);
-            }}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            placeholder="이메일"
-            placeholderTextColor={theme.textSecondary}
-            style={[
-              styles.input,
-              { color: theme.text, backgroundColor: theme.backgroundElement },
-            ]}
-          />
+            <ThemedView type="backgroundElement" style={styles.formCard}>
+              <ThemedText type="smallBold" style={styles.formTitle}>
+                로그인
+              </ThemedText>
 
-          <TextInput
-            value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              setError(null);
-            }}
-            secureTextEntry
-            placeholder="비밀번호"
-            placeholderTextColor={theme.textSecondary}
-            style={[
-              styles.input,
-              { color: theme.text, backgroundColor: theme.backgroundElement },
-            ]}
-          />
+              <View style={styles.fieldGroup}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+                  이메일
+                </ThemedText>
+                <TextInput
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    setError(null);
+                  }}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  spellCheck={false}
+                  placeholder="이메일 주소"
+                  placeholderTextColor={theme.textSecondary}
+                  returnKeyType="next"
+                  style={[
+                    styles.input,
+                    {
+                      color: theme.text,
+                      backgroundColor: theme.background,
+                      borderColor: theme.backgroundSelected,
+                    },
+                  ]}
+                />
+              </View>
 
-          {error && (
-            <ThemedText themeColor="textSecondary" style={styles.error}>
-              {error}
-            </ThemedText>
-          )}
+              <View style={styles.fieldGroup}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+                  비밀번호
+                </ThemedText>
+                <TextInput
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    setError(null);
+                  }}
+                  placeholder="비밀번호 입력"
+                  placeholderTextColor={theme.textSecondary}
+                  secureTextEntry
+                  returnKeyType="done"
+                  onSubmitEditing={handleSubmit}
+                  style={[
+                    styles.input,
+                    {
+                      color: theme.text,
+                      backgroundColor: theme.background,
+                      borderColor: theme.backgroundSelected,
+                    },
+                  ]}
+                />
+              </View>
 
-          <Pressable
-            onPress={handleSubmit}
-            disabled={submitting}
-            style={[styles.button, { backgroundColor: theme.text, opacity: submitting ? 0.6 : 1 }]}>
-            <ThemedText type="smallBold" style={{ color: theme.background }}>
-              {submitting ? '로그인 중...' : '로그인'}
-            </ThemedText>
-          </Pressable>
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: staySignedIn }}
+                onPress={() => setStaySignedIn((current) => !current)}
+                style={({ pressed }) => [styles.stayLoggedInRow, pressed && styles.pressed]}>
+                <View
+                  style={[
+                    styles.checkbox,
+                    {
+                      borderColor: theme.backgroundSelected,
+                      backgroundColor: staySignedIn ? '#22C55E' : theme.background,
+                    },
+                  ]}>
+                  {staySignedIn ? <ThemedText style={styles.checkmark}>✓</ThemedText> : null}
+                </View>
+                <View style={styles.stayLoggedInTextGroup}>
+                  <ThemedText type="smallBold" style={styles.stayLoggedInLabel}>
+                    로그인 상태 유지
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.stayLoggedInHint}>
+                    Stay signed in on this device
+                  </ThemedText>
+                </View>
+              </Pressable>
+
+              {error ? (
+                <ThemedText type="small" style={styles.errorText}>
+                  {error}
+                </ThemedText>
+              ) : null}
+
+              <Pressable
+                onPress={handleSubmit}
+                disabled={submitting}
+                style={({ pressed }) => [
+                  styles.loginButton,
+                  { opacity: submitting ? 0.6 : 1 },
+                  pressed && styles.pressed,
+                ]}>
+                <ThemedText type="smallBold" style={styles.loginButtonText}>
+                  {submitting ? '로그인 중...' : '로그인'}
+                </ThemedText>
+              </Pressable>
+            </ThemedView>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
@@ -100,31 +185,100 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  formWrapper: {
+  keyboardView: {
+    flex: 1,
     width: '100%',
     maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.five,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.five,
+    gap: Spacing.four,
+  },
+  hero: {
+    alignItems: 'center',
     gap: Spacing.three,
   },
   title: {
-    marginBottom: Spacing.two,
+    textAlign: 'center',
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  subtitle: {
+    textAlign: 'center',
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  formCard: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.four,
+    gap: Spacing.three,
+  },
+  formTitle: {
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  fieldGroup: {
+    gap: Spacing.one,
+  },
+  label: {
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   input: {
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
+    paddingVertical: Spacing.two,
     fontSize: FontSize.default,
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
-  error: {
-    textAlign: 'center',
+  stayLoggedInRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
-  button: {
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: BorderRadius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: FontSize.caption,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  stayLoggedInTextGroup: {
+    flex: 1,
+    gap: 2,
+  },
+  stayLoggedInLabel: {
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  stayLoggedInHint: {
+    fontSize: FontSize.micro,
+    lineHeight: 14,
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  loginButton: {
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: BorderRadius.md,
-    paddingVertical: Spacing.three,
-    marginTop: Spacing.two,
+    backgroundColor: '#22C55E',
+    paddingVertical: Spacing.two,
+  },
+  loginButtonText: {
+    color: '#FFFFFF',
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });
