@@ -10,11 +10,11 @@ import { MemberSearchPanel } from '@/components/member-search-panel';
 import { HintRow } from '@/components/hint-row';
 import { ToggleHintRow } from '@/components/toggle-hint-row';
 import { UpcomingEventsSection } from '@/components/upcoming-events-section';
+import { TextSizeControl } from '@/components/text-size-control';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 import { BorderRadius, BottomTabInset, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
-import { TextSizeControl } from '@/components/text-size-control';
 import { useAuth } from '@/contexts/auth-context';
 import { HomeTextScaleProvider } from '@/contexts/home-text-scale';
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
@@ -31,74 +31,74 @@ export default function HomeScreen() {
       <ThemedView style={styles.container}>
         <TextSizeControl />
         <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          ref={scrollRef}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets={false}
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            {
-              paddingTop: Spacing.two,
-              paddingBottom: BottomTabInset + Spacing.five,
-            },
-          ]}
-          showsVerticalScrollIndicator={false}>
-          <ThemedView style={styles.heroSection}>
-            <AnimatedIcon />
-            <ThemedText type="subtitle" style={styles.greeting}>
-              소중한{' '}
-              <AnimatedUserName name={profile?.nameKo ?? '성도'} />
-              님,{'\n'}
-              오늘도 교회를 위해 함께 해주셔서 감사해요.
+          <ScrollView
+            ref={scrollRef}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets={false}
+            style={styles.scrollView}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingTop: Spacing.two,
+                paddingBottom: BottomTabInset + Spacing.five,
+              },
+            ]}
+            showsVerticalScrollIndicator={false}>
+            <ThemedView style={styles.heroSection}>
+              <AnimatedIcon />
+              <ThemedText type="subtitle" style={styles.greeting}>
+                소중한{' '}
+                <AnimatedUserName name={profile?.nameKo ?? '성도'} />
+                님,{'\n'}
+                오늘도 교회를 위해 함께 해주셔서 감사해요.
+              </ThemedText>
+            </ThemedView>
+
+            <ThemedText type="code" style={styles.code}>
+              get started
             </ThemedText>
-          </ThemedView>
 
-          <ThemedText type="code" style={styles.code}>
-            get started
-          </ThemedText>
+            <ThemedView type="backgroundElement" style={styles.stepContainer}>
+              <UpcomingEventsSection scrollRef={scrollRef} />
 
-          <ThemedView type="backgroundElement" style={styles.stepContainer}>
-            <UpcomingEventsSection scrollRef={scrollRef} />
+              <ToggleHintRow
+                title="출결"
+                isOpen={showAttendance}
+                onToggle={() => setShowAttendance((current) => !current)}
+                hint={showAttendance ? '접기' : '셀그룹 보기'}
+                scrollRef={scrollRef}>
+                <AttendancePanel />
+              </ToggleHintRow>
 
-            <ToggleHintRow
-              title="출결"
-              isOpen={showAttendance}
-              onToggle={() => setShowAttendance((current) => !current)}
-              hint={showAttendance ? '접기' : '셀그룹 보기'}
-              scrollRef={scrollRef}>
-              <AttendancePanel />
-            </ToggleHintRow>
+              <ToggleHintRow
+                title="교인 검색"
+                isOpen={showMemberSearch}
+                onToggle={() => setShowMemberSearch((current) => !current)}
+                hint={showMemberSearch ? '접기' : '검색하기'}
+                scrollRef={scrollRef}>
+                <MemberSearchPanel
+                  scrollRef={scrollRef}
+                  preserveScrollPosition={preserveScrollPosition}
+                />
+              </ToggleHintRow>
 
-            <ToggleHintRow
-              title="교인 검색"
-              isOpen={showMemberSearch}
-              onToggle={() => setShowMemberSearch((current) => !current)}
-              hint={showMemberSearch ? '접기' : '검색하기'}
-              scrollRef={scrollRef}>
-              <MemberSearchPanel
-                scrollRef={scrollRef}
-                preserveScrollPosition={preserveScrollPosition}
-              />
-            </ToggleHintRow>
+              <Link href="/members" asChild>
+                <Pressable>
+                  <HintRow title="성도관리" hint="바로가기" />
+                </Pressable>
+              </Link>
 
-            <Link href="/members" asChild>
-              <Pressable>
-                <HintRow title="성도관리" hint="바로가기" />
-              </Pressable>
-            </Link>
+              <Link href="/settings" asChild>
+                <Pressable>
+                  <HintRow title="설정" hint="바로가기" />
+                </Pressable>
+              </Link>
+            </ThemedView>
 
-            <Link href="/settings" asChild>
-              <Pressable>
-                <HintRow title="설정" hint="바로가기" />
-              </Pressable>
-            </Link>
-          </ThemedView>
-
-          {Platform.OS === 'web' && <WebBadge />}
-        </ScrollView>
+            {Platform.OS === 'web' && <WebBadge />}
+          </ScrollView>
         </SafeAreaView>
       </ThemedView>
     </HomeTextScaleProvider>
