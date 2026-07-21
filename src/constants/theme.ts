@@ -80,10 +80,14 @@ export const FontSize = {
   default: 16,
   heading: 20,
   hero: 22,
-  subtitle: 32,
-  title: 48,
+  /** Sized for a phone column (~390–430px), not a desktop hero. */
+  subtitle: 28,
+  title: 36,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const TopTabInset = Platform.select({ web: Spacing.six + Spacing.three, default: 0 }) ?? 0;
-export const MaxContentWidth = 800;
+/** Web top nav height — kept compact so pages read as a phone layout. */
+export const TopTabInset = Platform.select({ web: Spacing.five + Spacing.two, default: 0 }) ?? 0;
+/** Phone-width content column used across every screen (web + native). */
+export const MobileShellWidth = 430;
+export const MaxContentWidth = MobileShellWidth;

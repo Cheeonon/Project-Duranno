@@ -8,7 +8,7 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getDayEvents, getDayMarkers } from '@/constants/calendar-demo';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
@@ -348,10 +348,10 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     width: '100%',
-    maxWidth: 512,
+    maxWidth: MaxContentWidth,
     borderRadius: BorderRadius.md,
-    padding: 19,
-    gap: 13,
+    padding: Spacing.three,
+    gap: Spacing.two,
   },
   todayBanner: {
     alignItems: 'center',

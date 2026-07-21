@@ -258,15 +258,15 @@ const styles = StyleSheet.create({
   contentContainer: {
     flexGrow: 1,
     alignItems: 'center',
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
-    paddingBottom: BottomTabInset + Spacing.five,
+    paddingBottom: BottomTabInset + Spacing.four,
   },
   container: {
     width: '100%',
     maxWidth: MaxContentWidth,
     gap: Spacing.three,
-    paddingTop: Spacing.six,
+    paddingTop: Spacing.four,
   },
   backLink: {
     alignSelf: 'flex-start',

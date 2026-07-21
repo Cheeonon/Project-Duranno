@@ -15,7 +15,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { Colors } from '@/constants/theme';
 const DURATION = 600;
 const LOGO_ASPECT_RATIO = 1024 / 915;
-const LOGO_WIDTH = 140;
+const LOGO_WIDTH = 112;
 const LOGO_HEIGHT = LOGO_WIDTH / LOGO_ASPECT_RATIO;
 
 export function AnimatedSplashOverlay() {

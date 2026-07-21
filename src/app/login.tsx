@@ -60,7 +60,7 @@ export default function LoginScreen() {
             <View style={styles.hero}>
               <AnimatedIcon />
               <ThemedText type="subtitle" style={styles.title}>
-                Project Duranno App
+                두란노 성도 관리 어플
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
                 교회를 위한 성도 관리 어플에 오신 것을 환영합니다.
@@ -194,16 +194,18 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.four,
     gap: Spacing.four,
   },
   hero: {
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two,
   },
   title: {
     textAlign: 'center',
+    fontSize: FontSize.heading,
+    lineHeight: 28,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   subtitle: {
@@ -212,7 +214,7 @@ const styles = StyleSheet.create({
   },
   formCard: {
     borderRadius: BorderRadius.lg,
-    padding: Spacing.four,
+    padding: Spacing.three,
     gap: Spacing.three,
   },
   formTitle: {

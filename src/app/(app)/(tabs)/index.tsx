@@ -119,21 +119,21 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: Spacing.three,
     gap: Spacing.three,
     alignItems: 'stretch',
   },
   heroSection: {
     alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    gap: Spacing.six,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    gap: Spacing.four,
   },
   greeting: {
     alignSelf: 'stretch',
     textAlign: 'left',
     fontSize: FontSize.hero,
-    lineHeight: 32,
+    lineHeight: 30,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   code: {
