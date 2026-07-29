@@ -22,7 +22,7 @@ export function WebAppShell({ children }: PropsWithChildren) {
           styles.shell,
           {
             backgroundColor: theme.background,
-            borderColor: theme.backgroundSelected,
+            borderColor: theme.border,
           },
         ]}>
         {children}

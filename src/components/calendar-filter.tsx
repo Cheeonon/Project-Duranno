@@ -2,7 +2,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { Accent, BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export type CalendarFilterCategory = 'birthdays' | 'events';
 
@@ -32,6 +33,8 @@ export function CalendarFilterSection({
   onToggleFilter,
   layout = 'calendar',
 }: CalendarFilterSectionProps) {
+  const theme = useTheme();
+
   return (
     <ThemedView
       type="backgroundElement"
@@ -56,12 +59,20 @@ export function CalendarFilterSection({
               style={({ pressed }) => [styles.optionPressable, pressed && styles.pressed]}>
               <ThemedView
                 type={isSelected ? 'backgroundSelected' : 'background'}
-                style={[styles.optionCard, isSelected && styles.optionCardSelected]}>
+                style={[
+                  styles.optionCard,
+                  { borderColor: isSelected ? Accent.green : theme.border },
+                ]}>
                 <View style={[styles.colorDot, { backgroundColor: option.color }]} />
                 <ThemedText type="smallBold" style={styles.optionLabel}>
                   {option.label}
                 </ThemedText>
-                <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                <View
+                  style={[
+                    styles.checkbox,
+                    { borderColor: isSelected ? Accent.green : theme.border },
+                    isSelected && styles.checkboxSelected,
+                  ]}>
                   {isSelected ? <ThemedText style={styles.checkmark}>✓</ThemedText> : null}
                 </View>
               </ThemedView>
@@ -111,10 +122,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     gap: 4,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#D0D0D5',
-  },
-  optionCardSelected: {
-    borderColor: '#22C55E',
   },
   colorDot: {
     width: 6,
@@ -132,13 +139,11 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 2,
     borderWidth: 1,
-    borderColor: '#B0B4BA',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#22C55E',
-    borderColor: '#22C55E',
+    backgroundColor: Accent.green,
   },
   checkmark: {
     color: '#FFFFFF',
