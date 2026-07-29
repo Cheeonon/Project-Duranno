@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedIcon } from '@/components/animated-icon';
@@ -13,7 +13,6 @@ import { UpcomingEventsSection } from '@/components/upcoming-events-section';
 import { TextSizeControl } from '@/components/text-size-control';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
 import { BorderRadius, BottomTabInset, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { HomeTextScaleProvider } from '@/contexts/home-text-scale';
@@ -96,8 +95,6 @@ export default function HomeScreen() {
                 </Pressable>
               </Link>
             </ThemedView>
-
-            {Platform.OS === 'web' && <WebBadge />}
           </ScrollView>
         </SafeAreaView>
       </ThemedView>

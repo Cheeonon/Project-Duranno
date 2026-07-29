@@ -1,10 +1,9 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
 import { BorderRadius, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
@@ -134,8 +133,6 @@ export default function SettingsScreen() {
               추가 설정은 곧 제공될 예정입니다.
             </ThemedText>
           </ThemedView>
-
-          {Platform.OS === 'web' && <WebBadge />}
         </ThemedView>
       </ScrollView>
 

@@ -7,6 +7,7 @@ import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 import { useAttendance } from '@/hooks/use-attendance';
+import { useAttendanceFeedback } from '@/hooks/use-attendance-feedback';
 import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
 import { formatAttendanceDate, getAttendanceKey, getSundaysInMonth } from '@/lib/attendance-dates';
@@ -22,6 +23,7 @@ export function AttendancePanel() {
   const theme = useTheme();
   const { scaled } = useHomeTextScale();
   const { profile } = useAuth();
+  const { trigger: triggerFeedback } = useAttendanceFeedback();
   const { members, isLoading: membersLoading, error: membersError } = useMembers();
   const [viewDate, setViewDate] = useState(() => new Date());
   const year = viewDate.getFullYear();
@@ -61,11 +63,14 @@ export function AttendancePanel() {
   const toggleAttendance = (memberId: string, date: Date) => {
     const key = getAttendanceKey(memberId, date);
     const wasPresent = Boolean(attendance[key]);
-    setPresent(memberId, date, !wasPresent);
+    const nextPresent = !wasPresent;
+    triggerFeedback(nextPresent ? 'present' : 'absent');
+    setPresent(memberId, date, nextPresent);
   };
 
   const openAbsenceEditor = (memberId: string, memberName: string, date: Date) => {
     const key = getAttendanceKey(memberId, date);
+    triggerFeedback('open');
     setAbsenceEditor({
       memberId,
       memberName,
@@ -86,6 +91,7 @@ export function AttendancePanel() {
     }
 
     const trimmedReason = reasonDraft.trim();
+    triggerFeedback('saved');
     setAbsenceReason(absenceEditor.memberId, absenceEditor.date, trimmedReason || null);
     closeAbsenceEditor();
   };

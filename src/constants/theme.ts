@@ -86,8 +86,8 @@ export const FontSize = {
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-/** Web top nav height — kept compact so pages read as a phone layout. */
-export const TopTabInset = Platform.select({ web: Spacing.five + Spacing.two, default: 0 }) ?? 0;
+/** Web top nav height — includes extra top padding so the bar sits below the edge. */
+export const TopTabInset = Platform.select({ web: Spacing.five + Spacing.four, default: 0 }) ?? 0;
 /** Phone-width content column used across every screen (web + native). */
 export const MobileShellWidth = 430;
 export const MaxContentWidth = MobileShellWidth;

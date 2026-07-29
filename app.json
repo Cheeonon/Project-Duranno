@@ -34,7 +34,8 @@
           "image": "./assets/images/duranno-logo.png",
           "imageWidth": 120
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,
