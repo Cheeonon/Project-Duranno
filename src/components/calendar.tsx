@@ -8,7 +8,9 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getDayEvents, getDayMarkers } from '@/constants/calendar-demo';
-import { BorderRadius, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Accent, BorderRadius, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
@@ -66,6 +68,9 @@ function getCategoryLabel(category: CalendarFilterCategory) {
 }
 
 export function Calendar({ activeFilters = [] }: CalendarProps) {
+  const theme = useTheme();
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
   const [today, setToday] = useState(() => new Date());
   const [viewDate, setViewDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -131,7 +136,7 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
 
   return (
     <ThemedView type="backgroundElement" style={styles.container}>
-      <View style={styles.todayBanner}>
+      <View style={[styles.todayBanner, { borderBottomColor: theme.border }]}>
         <ThemedText type="smallBold" style={styles.bannerDate}>
           {formatKoreanDate(today)}
         </ThemedText>
@@ -167,6 +172,7 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
           onPress={() => setZoom('compact')}
           style={({ pressed }) => [
             styles.zoomButton,
+            { borderColor: theme.border },
             !isExpanded && styles.zoomButtonDisabled,
             pressed && isExpanded && styles.pressed,
           ]}>
@@ -188,6 +194,7 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
           }}
           style={({ pressed }) => [
             styles.zoomButton,
+            { borderColor: theme.border },
             isExpanded && styles.zoomButtonDisabled,
             pressed && !isExpanded && styles.pressed,
           ]}>
@@ -224,8 +231,13 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
                 style={[
                   styles.dayCell,
                   isExpanded && styles.dayCellExpanded,
-                  isToday && { backgroundColor: '#22C55E' },
-                  isSelected && !isToday && styles.selectedDayCell,
+                  isToday && { backgroundColor: Accent.green },
+                  isSelected &&
+                    !isToday && {
+                      backgroundColor: isDark ? '#2F4036' : '#DCFCE7',
+                      borderWidth: 1,
+                      borderColor: Accent.green,
+                    },
                 ]}>
                 <ThemedText
                   type="small"
@@ -233,7 +245,11 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
                     styles.dayText,
                     isSunday && !isToday && styles.sundayText,
                     isToday && styles.todayText,
-                    isSelected && !isToday && styles.selectedDayText,
+                    isSelected &&
+                      !isToday && {
+                        color: isDark ? '#A7F3C0' : '#15803D',
+                        fontWeight: '700',
+                      },
                   ]}>
                   {date?.getDate()}
                 </ThemedText>
@@ -358,7 +374,6 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
     paddingBottom: Spacing.one,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#D0D0D5',
   },
   header: {
     flexDirection: 'row',
@@ -376,7 +391,6 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#B0B4BA',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -506,15 +520,6 @@ const styles = StyleSheet.create({
   },
   todayText: {
     color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  selectedDayCell: {
-    backgroundColor: '#DCFCE7',
-    borderWidth: 1,
-    borderColor: '#22C55E',
-  },
-  selectedDayText: {
-    color: '#15803D',
     fontWeight: '700',
   },
   eventPanel: {

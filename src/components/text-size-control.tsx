@@ -1,8 +1,9 @@
-import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
 import { Colors, FontSize, Spacing } from '@/constants/theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export function TextSizeControl() {
   const scheme = useColorScheme();

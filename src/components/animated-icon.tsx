@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { useFocusEffect } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useRef, useState } from 'react';
-import { StyleSheet, useColorScheme, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   Keyframe,
@@ -13,6 +13,7 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 const DURATION = 600;
 const LOGO_ASPECT_RATIO = 1024 / 915;
 const LOGO_WIDTH = 112;

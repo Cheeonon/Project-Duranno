@@ -23,7 +23,12 @@ export default function Root({ children }: PropsWithChildren) {
               }
               body {
                 margin: 0;
-                background-color: #EAF2EB;
+                background-color: #DEE8E0;
+              }
+              @media (prefers-color-scheme: dark) {
+                body {
+                  background-color: #2B342E;
+                }
               }
             `,
           }}

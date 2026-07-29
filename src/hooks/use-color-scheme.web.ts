@@ -1,21 +1,29 @@
 import { useEffect, useState } from 'react';
-import { useColorScheme as useRNColorScheme } from 'react-native';
+import type { ColorSchemeName } from 'react-native';
 
 /**
- * To support static rendering, this value needs to be re-calculated on the client side for web
+ * Web color scheme — listen to `prefers-color-scheme` directly so toggles
+ * update every themed surface. RN Web's hook can lag or miss changes.
  */
-export function useColorScheme() {
+export function useColorScheme(): ColorSchemeName {
+  const [scheme, setScheme] = useState<ColorSchemeName>('light');
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const sync = () => {
+      setScheme(media.matches ? 'dark' : 'light');
+    };
+
+    sync();
     setHasHydrated(true);
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
   }, []);
 
-  const colorScheme = useRNColorScheme();
-
-  if (hasHydrated) {
-    return colorScheme;
+  if (!hasHydrated) {
+    return 'light';
   }
 
-  return 'light';
+  return scheme;
 }

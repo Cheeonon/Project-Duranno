@@ -10,22 +10,29 @@ import { Platform } from 'react-native';
 export const Colors = {
   light: {
     /** Deep leaf ink — soft enough to feel natural, dark enough to read */
-    text: '#1C2B1F',
-    /** Clean mist — nearly white with a quiet green cast */
-    background: '#F7FAF7',
+    text: '#1A281D',
+    /** Soft mist — quiet green, a touch deeper than white */
+    background: '#EEF4EF',
     /** Soft sage surfaces for cards / panels */
-    backgroundElement: '#EAF2EB',
+    backgroundElement: '#DEE8E0',
     /** Selected / pressed moss wash */
-    backgroundSelected: '#D5E6D8',
-    textSecondary: '#5F7264',
+    backgroundSelected: '#C9D9CC',
+    textSecondary: '#55685A',
+    /** Hairline borders / chip outlines */
+    border: '#B7C4BA',
   },
   dark: {
-    text: '#E8F0EA',
-    /** Quiet forest night */
-    background: '#0F1611',
-    backgroundElement: '#1A2420',
-    backgroundSelected: '#2A3830',
-    textSecondary: '#9AABA0',
+    /** Soft mist on night — easy on the eyes, not pure white */
+    text: '#EAF1EC',
+    /** Softened moss night — dark, but open */
+    background: '#202822',
+    /** Raised panel — evening leaf, a step above the canvas */
+    backgroundElement: '#2B342E',
+    /** Selected / pressed — muted forest wash */
+    backgroundSelected: '#3B463E',
+    textSecondary: '#A3B3A8',
+    /** Hairline borders / chip outlines */
+    border: '#4A5650',
   },
 } as const;
 
