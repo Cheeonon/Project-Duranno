@@ -3,13 +3,14 @@ import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } f
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { Accent, BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 import { useAttendance } from '@/hooks/use-attendance';
 import { useAttendanceFeedback } from '@/hooks/use-attendance-feedback';
 import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatAttendanceDate, getAttendanceKey, getSundaysInMonth } from '@/lib/attendance-dates';
 
 type AbsenceEditorTarget = {
@@ -21,6 +22,8 @@ type AbsenceEditorTarget = {
 
 export function AttendancePanel() {
   const theme = useTheme();
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
   const { scaled } = useHomeTextScale();
   const { profile } = useAuth();
   const { trigger: triggerFeedback } = useAttendanceFeedback();
@@ -207,14 +210,19 @@ export function AttendancePanel() {
                     {...getAbsenceCellHandlers(member.id, member.nameKo, date)}
                     style={({ pressed }) => [
                       styles.attendanceCell,
+                      { borderColor: theme.border },
                       isPresent && styles.attendanceCellPresent,
-                      hasAbsenceReason && styles.attendanceCellAbsent,
+                      hasAbsenceReason && {
+                        backgroundColor: isDark ? '#3A2426' : '#FEE2E2',
+                        borderColor: '#EF4444',
+                      },
                       pressed && styles.pressed,
                     ]}>
                     <ThemedText
                       type="smallBold"
                       style={[
                         styles.checkText,
+                        { color: theme.textSecondary },
                         isPresent && styles.checkTextPresent,
                         hasAbsenceReason && styles.checkTextAbsent,
                       ]}>
@@ -375,22 +383,16 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: BorderRadius.sm,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#B0B4BA',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
   },
   attendanceCellPresent: {
-    backgroundColor: '#22C55E',
-    borderColor: '#22C55E',
-  },
-  attendanceCellAbsent: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#EF4444',
+    backgroundColor: Accent.green,
+    borderColor: Accent.green,
   },
   checkText: {
     fontSize: FontSize.body,
-    color: '#60646C',
   },
   checkTextPresent: {
     color: '#FFFFFF',
@@ -438,7 +440,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   modalButtonPrimary: {
-    backgroundColor: '#22C55E',
+    backgroundColor: Accent.green,
   },
   modalButtonPrimaryText: {
     color: '#FFFFFF',

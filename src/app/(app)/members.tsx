@@ -265,7 +265,11 @@ export default function MembersScreen() {
                   {editable && (
                     <Pressable
                       onPress={() => openEdit(member)}
-                      style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}>
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        { borderColor: theme.border },
+                        pressed && styles.pressed,
+                      ]}>
                       <ThemedText type="small">수정</ThemedText>
                     </Pressable>
                   )}
@@ -276,6 +280,7 @@ export default function MembersScreen() {
                       onPress={() => openIssue(member)}
                       style={({ pressed }) => [
                         styles.actionButton,
+                        { borderColor: theme.border },
                         hasAccount && styles.actionButtonDisabled,
                         pressed && styles.pressed,
                       ]}>
@@ -343,7 +348,7 @@ export default function MembersScreen() {
                     <Pressable onPress={() => setEditDraft({ ...editDraft, cellLeaderId: null })}>
                       <ThemedView
                         type={editDraft.cellLeaderId === null ? 'backgroundSelected' : 'background'}
-                        style={styles.chip}>
+                        style={[styles.chip, { borderColor: theme.border }]}>
                         <ThemedText type="small">{editDraft.nameKo} 셀 (본인)</ThemedText>
                       </ThemedView>
                     </Pressable>
@@ -355,7 +360,7 @@ export default function MembersScreen() {
                           onPress={() => setEditDraft({ ...editDraft, cellLeaderId: leader.id })}>
                           <ThemedView
                             type={editDraft.cellLeaderId === leader.id ? 'backgroundSelected' : 'background'}
-                            style={styles.chip}>
+                            style={[styles.chip, { borderColor: theme.border }]}>
                             <ThemedText type="small">{leader.nameKo} 셀</ThemedText>
                           </ThemedView>
                         </Pressable>
@@ -372,7 +377,7 @@ export default function MembersScreen() {
                         onPress={() => setEditDraft({ ...editDraft, gender: option.value })}>
                         <ThemedView
                           type={editDraft.gender === option.value ? 'backgroundSelected' : 'background'}
-                          style={styles.chip}>
+                          style={[styles.chip, { borderColor: theme.border }]}>
                           <ThemedText type="small">{option.label}</ThemedText>
                         </ThemedView>
                       </Pressable>
@@ -387,7 +392,7 @@ export default function MembersScreen() {
                       <Pressable key={option} onPress={() => setEditDraft({ ...editDraft, position: option })}>
                         <ThemedView
                           type={editDraft.position === option ? 'backgroundSelected' : 'background'}
-                          style={styles.chip}>
+                          style={[styles.chip, { borderColor: theme.border }]}>
                           <ThemedText type="small">{option}</ThemedText>
                         </ThemedView>
                       </Pressable>
@@ -402,7 +407,7 @@ export default function MembersScreen() {
                       <Pressable key={option} onPress={() => setEditDraft({ ...editDraft, permission: option })}>
                         <ThemedView
                           type={editDraft.permission === option ? 'backgroundSelected' : 'background'}
-                          style={styles.chip}>
+                          style={[styles.chip, { borderColor: theme.border }]}>
                           <ThemedText type="small">{option}</ThemedText>
                         </ThemedView>
                       </Pressable>
@@ -565,7 +570,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#B0B4BA',
   },
   actionButtonDisabled: {
     opacity: 0.5,
@@ -620,6 +624,5 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: Spacing.two,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#D0D0D5',
   },
 });

@@ -75,7 +75,7 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
         showsVerticalScrollIndicator={false}>
         {results.length > 0 ? (
           results.map((member) => (
-            <ThemedView key={member.id} type="background" style={styles.resultCard}>
+            <ThemedView key={member.id} type="background" style={[styles.resultCard, { borderColor: theme.border }]}>
               <View style={styles.resultHeader}>
                 <ThemedText type="smallBold" style={styles.memberName}>
                   {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
@@ -153,7 +153,6 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#D0D0D5',
   },
   resultHeader: {
     flexDirection: 'row',
