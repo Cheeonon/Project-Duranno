@@ -13,7 +13,7 @@ import { Pressable, View, StyleSheet } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { BorderRadius, Colors, MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
+import { BorderRadius, Colors, FontSize, MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function AppTabs() {
@@ -40,7 +40,7 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
         style={[styles.tabButtonView, isFocused && styles.tabButtonViewFocused]}>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+        <ThemedText type="smallBold" themeColor={isFocused ? 'text' : 'textSecondary'} style={styles.navLabel}>
           {children}
         </ThemedText>
       </ThemedView>
@@ -63,11 +63,13 @@ export function CustomTabList(props: TabListProps) {
 
         <Link href="/settings" asChild>
           <Pressable style={styles.settingsPressable}>
-            <ThemedText type="link">설정</ThemedText>
+            <ThemedText type="link" style={styles.navLabel}>
+              설정
+            </ThemedText>
             <SymbolView
               tintColor={colors.text}
               name={{ ios: 'gearshape', web: 'settings' }}
-              size={12}
+              size={16}
             />
           </Pressable>
         </Link>
@@ -80,7 +82,7 @@ const styles = StyleSheet.create({
   tabListContainer: {
     position: 'absolute',
     width: '100%',
-    paddingHorizontal: Spacing.two,
+    paddingHorizontal: Spacing.three,
     paddingTop: Spacing.four,
     paddingBottom: Spacing.two,
     justifyContent: 'center',
@@ -88,25 +90,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   innerContainer: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
     borderRadius: BorderRadius.xl,
     flexDirection: 'row',
     alignItems: 'center',
     flexGrow: 1,
-    gap: Spacing.one,
+    gap: Spacing.two,
     maxWidth: MaxContentWidth,
   },
   brandText: {
     marginRight: 'auto',
     flexShrink: 1,
+    fontSize: FontSize.body,
+    lineHeight: 20,
+  },
+  navLabel: {
+    fontSize: FontSize.body,
+    lineHeight: 20,
   },
   pressed: {
     opacity: 0.7,
   },
   tabButtonView: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
     borderRadius: BorderRadius.md,
   },
   tabButtonViewFocused: {
