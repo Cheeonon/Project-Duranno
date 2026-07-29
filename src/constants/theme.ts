@@ -9,19 +9,30 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    /** Deep leaf ink — soft enough to feel natural, dark enough to read */
+    text: '#1C2B1F',
+    /** Clean mist — nearly white with a quiet green cast */
+    background: '#F7FAF7',
+    /** Soft sage surfaces for cards / panels */
+    backgroundElement: '#EAF2EB',
+    /** Selected / pressed moss wash */
+    backgroundSelected: '#D5E6D8',
+    textSecondary: '#5F7264',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#E8F0EA',
+    /** Quiet forest night */
+    background: '#0F1611',
+    backgroundElement: '#1A2420',
+    backgroundSelected: '#2A3830',
+    textSecondary: '#9AABA0',
   },
+} as const;
+
+/** Primary accent used for buttons, checkmarks, and focus states. */
+export const Accent = {
+  green: '#22C55E',
+  greenMuted: '#16A34A',
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;

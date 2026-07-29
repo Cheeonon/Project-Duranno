@@ -1,10 +1,11 @@
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { StackScreenEnter } from '@/components/stack-screen-enter';
 import { BorderRadius, BottomTabInset, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useMembers } from '@/hooks/use-members';
@@ -194,15 +195,22 @@ export default function MembersScreen() {
   };
 
   return (
-    <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <Link href="/" asChild>
-          <Pressable style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}>
+    <StackScreenEnter>
+      <ThemedView style={styles.screen}>
+        <SafeAreaView style={styles.safeArea}>
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/');
+              }
+            }}
+            style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}>
             <ThemedText type="small" themeColor="textSecondary">
               ‹ 홈
             </ThemedText>
           </Pressable>
-        </Link>
 
         <ThemedText type="subtitle" style={styles.title}>
           성도관리
@@ -493,7 +501,8 @@ export default function MembersScreen() {
           </View>
         </Pressable>
       </Modal>
-    </ThemedView>
+      </ThemedView>
+    </StackScreenEnter>
   );
 }
 

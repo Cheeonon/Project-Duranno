@@ -8,9 +8,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-/** Tracks the last focused tab so enter direction can feel like a slide. */
-const lastFocusedTabIndex = { current: 0 };
-
 type TabScreenSlideProps = {
   /** 0 = 홈, 1 = 달력, … */
   tabIndex: number;
@@ -18,13 +15,12 @@ type TabScreenSlideProps = {
 };
 
 /**
- * Soft horizontal slide + fade when a tab becomes focused.
- * Forward (home → calendar) enters from the right; back enters from the left.
+ * Minimal tab transition — short fade with a tiny horizontal nudge.
  */
-export function TabScreenSlide({ tabIndex, children }: TabScreenSlideProps) {
+export function TabScreenSlide({ tabIndex: _tabIndex, children }: TabScreenSlideProps) {
   const isFocused = useIsFocused();
-  const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
+  const translateX = useSharedValue(0);
   const hasAnimatedOnce = useRef(false);
 
   useEffect(() => {
@@ -32,28 +28,24 @@ export function TabScreenSlide({ tabIndex, children }: TabScreenSlideProps) {
       return;
     }
 
-    const movingForward = tabIndex >= lastFocusedTabIndex.current;
-    lastFocusedTabIndex.current = tabIndex;
-
-    // Skip the very first paint of the initial tab.
     if (!hasAnimatedOnce.current) {
       hasAnimatedOnce.current = true;
-      translateX.value = 0;
       opacity.value = 1;
+      translateX.value = 0;
       return;
     }
 
-    translateX.value = movingForward ? 48 : -48;
-    opacity.value = 0.88;
-    translateX.value = withTiming(0, {
-      duration: 340,
-      easing: Easing.out(Easing.cubic),
-    });
+    opacity.value = 0.94;
+    translateX.value = 10;
     opacity.value = withTiming(1, {
-      duration: 280,
-      easing: Easing.out(Easing.cubic),
+      duration: 180,
+      easing: Easing.out(Easing.quad),
     });
-  }, [isFocused, opacity, tabIndex, translateX]);
+    translateX.value = withTiming(0, {
+      duration: 200,
+      easing: Easing.out(Easing.quad),
+    });
+  }, [isFocused, opacity, translateX]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     flex: 1,

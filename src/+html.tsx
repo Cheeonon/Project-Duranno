@@ -23,7 +23,7 @@ export default function Root({ children }: PropsWithChildren) {
               }
               body {
                 margin: 0;
-                background-color: #F0F0F3;
+                background-color: #EAF2EB;
               }
             `,
           }}

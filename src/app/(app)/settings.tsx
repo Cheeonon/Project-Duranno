@@ -1,9 +1,10 @@
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { StackScreenEnter } from '@/components/stack-screen-enter';
 import { BorderRadius, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
@@ -70,18 +71,25 @@ export default function SettingsScreen() {
   };
 
   return (
-    <>
+    <StackScreenEnter>
+      <>
       <ScrollView
         style={[styles.scrollView, { backgroundColor: theme.background }]}
         contentContainerStyle={styles.contentContainer}>
         <ThemedView style={styles.container}>
-          <Link href="/" asChild>
-            <Pressable style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}>
-              <ThemedText type="small" themeColor="textSecondary">
-                ‹ 홈
-              </ThemedText>
-            </Pressable>
-          </Link>
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/');
+              }
+            }}
+            style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}>
+            <ThemedText type="small" themeColor="textSecondary">
+              ‹ 홈
+            </ThemedText>
+          </Pressable>
 
           <ThemedText type="subtitle">설정</ThemedText>
           <ThemedText style={styles.description} themeColor="textSecondary">
@@ -244,7 +252,8 @@ export default function SettingsScreen() {
           </View>
         </Pressable>
       </Modal>
-    </>
+      </>
+    </StackScreenEnter>
   );
 }
 
