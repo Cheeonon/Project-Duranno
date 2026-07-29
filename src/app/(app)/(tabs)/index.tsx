@@ -16,7 +16,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BorderRadius, BottomTabInset, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { HomeTextScaleProvider } from '@/contexts/home-text-scale';
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -42,84 +41,82 @@ export default function HomeScreen() {
 
   return (
     <TabScreenSlide tabIndex={0}>
-      <HomeTextScaleProvider>
-        <ThemedView style={styles.container}>
-          <TextSizeControl />
-          <SafeAreaView style={styles.safeArea}>
-            <ScrollView
-              ref={scrollRef}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              keyboardShouldPersistTaps="handled"
-              automaticallyAdjustKeyboardInsets={false}
-              style={styles.scrollView}
-              contentContainerStyle={[
-                styles.scrollContent,
-                {
-                  paddingTop: Spacing.two,
-                  paddingBottom: BottomTabInset + Spacing.five,
-                },
-              ]}
-              showsVerticalScrollIndicator={false}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  tintColor={theme.textSecondary}
-                  colors={[theme.textSecondary]}
+      <ThemedView style={styles.container}>
+        <TextSizeControl />
+        <SafeAreaView style={styles.safeArea}>
+          <ScrollView
+            ref={scrollRef}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets={false}
+            style={styles.scrollView}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingTop: Spacing.two,
+                paddingBottom: BottomTabInset + Spacing.five,
+              },
+            ]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={theme.textSecondary}
+                colors={[theme.textSecondary]}
+              />
+            }>
+            <ThemedView style={styles.heroSection}>
+              <AnimatedIcon />
+              <ThemedText type="subtitle" style={styles.greeting}>
+                소중한{' '}
+                <AnimatedUserName name={profile?.nameKo ?? '성도'} />
+                님,{'\n'}
+                오늘도 교회를 위해 함께 해주셔서 감사해요.
+              </ThemedText>
+            </ThemedView>
+
+            <ThemedView type="backgroundElement" style={styles.stepContainer}>
+              <UpcomingEventsSection key={`events-${refreshKey}`} scrollRef={scrollRef} />
+
+              <ToggleHintRow
+                title="출결"
+                isOpen={showAttendance}
+                onToggle={() => setShowAttendance((current) => !current)}
+                hint={showAttendance ? '접기' : '셀그룹 보기'}
+                scrollRef={scrollRef}>
+                <AttendancePanel key={`attendance-${refreshKey}`} />
+              </ToggleHintRow>
+
+              <ToggleHintRow
+                title="교인 검색"
+                isOpen={showMemberSearch}
+                onToggle={() => setShowMemberSearch((current) => !current)}
+                hint={showMemberSearch ? '접기' : '검색하기'}
+                scrollRef={scrollRef}>
+                <MemberSearchPanel
+                  key={`search-${refreshKey}`}
+                  scrollRef={scrollRef}
+                  preserveScrollPosition={preserveScrollPosition}
                 />
-              }>
-              <ThemedView style={styles.heroSection}>
-                <AnimatedIcon />
-                <ThemedText type="subtitle" style={styles.greeting}>
-                  소중한{' '}
-                  <AnimatedUserName name={profile?.nameKo ?? '성도'} />
-                  님,{'\n'}
-                  오늘도 교회를 위해 함께 해주셔서 감사해요.
-                </ThemedText>
-              </ThemedView>
+              </ToggleHintRow>
 
-              <ThemedView type="backgroundElement" style={styles.stepContainer}>
-                <UpcomingEventsSection key={`events-${refreshKey}`} scrollRef={scrollRef} />
+              <Link href="/members" asChild>
+                <Pressable>
+                  <HintRow title="성도관리" hint="바로가기" />
+                </Pressable>
+              </Link>
 
-                <ToggleHintRow
-                  title="출결"
-                  isOpen={showAttendance}
-                  onToggle={() => setShowAttendance((current) => !current)}
-                  hint={showAttendance ? '접기' : '셀그룹 보기'}
-                  scrollRef={scrollRef}>
-                  <AttendancePanel key={`attendance-${refreshKey}`} />
-                </ToggleHintRow>
-
-                <ToggleHintRow
-                  title="교인 검색"
-                  isOpen={showMemberSearch}
-                  onToggle={() => setShowMemberSearch((current) => !current)}
-                  hint={showMemberSearch ? '접기' : '검색하기'}
-                  scrollRef={scrollRef}>
-                  <MemberSearchPanel
-                    key={`search-${refreshKey}`}
-                    scrollRef={scrollRef}
-                    preserveScrollPosition={preserveScrollPosition}
-                  />
-                </ToggleHintRow>
-
-                <Link href="/members" asChild>
-                  <Pressable>
-                    <HintRow title="성도관리" hint="바로가기" />
-                  </Pressable>
-                </Link>
-
-                <Link href="/settings" asChild>
-                  <Pressable>
-                    <HintRow title="설정" hint="바로가기" />
-                  </Pressable>
-                </Link>
-              </ThemedView>
-            </ScrollView>
-          </SafeAreaView>
-        </ThemedView>
-      </HomeTextScaleProvider>
+              <Link href="/settings" asChild>
+                <Pressable>
+                  <HintRow title="설정" hint="바로가기" />
+                </Pressable>
+              </Link>
+            </ThemedView>
+          </ScrollView>
+        </SafeAreaView>
+      </ThemedView>
     </TabScreenSlide>
   );
 }

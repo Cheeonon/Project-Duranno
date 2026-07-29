@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,10 +11,13 @@ import { TabScreenSlide } from '@/components/tab-screen-slide';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function CalendarScreen() {
   const safeAreaInsets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+  const { handleScroll, collapseWithPreservedPosition } = usePreservedCollapse(scrollRef);
   const [selectedFilters, setSelectedFilters] = useState<CalendarFilterCategory[]>([
     'birthdays',
     'events',
@@ -49,6 +52,9 @@ export default function CalendarScreen() {
   return (
     <TabScreenSlide tabIndex={1}>
       <ScrollView
+        ref={scrollRef}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         style={[styles.scrollView, { backgroundColor: theme.background }]}
         contentInset={insets}
         contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
@@ -66,7 +72,10 @@ export default function CalendarScreen() {
               onToggleFilter={toggleFilter}
             />
             <View style={styles.calendarWrapper}>
-              <Calendar activeFilters={selectedFilters} />
+              <Calendar
+                activeFilters={selectedFilters}
+                collapseWithPreservedPosition={collapseWithPreservedPosition}
+              />
             </View>
           </View>
         </ThemedView>

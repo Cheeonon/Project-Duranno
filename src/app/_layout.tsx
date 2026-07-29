@@ -5,6 +5,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { WebAppShell } from '@/components/web-app-shell';
 import { Accent, Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import { HomeTextScaleProvider } from '@/contexts/home-text-scale';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 SplashScreen.preventAutoHideAsync();
@@ -40,9 +41,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkNavTheme : LightNavTheme}>
       <AuthProvider>
-        <WebAppShell>
-          <RootNavigator />
-        </WebAppShell>
+        <HomeTextScaleProvider>
+          <WebAppShell>
+            <RootNavigator />
+          </WebAppShell>
+        </HomeTextScaleProvider>
       </AuthProvider>
     </ThemeProvider>
   );

@@ -46,7 +46,7 @@ export function TextSizeControl() {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 0,
+    top: Spacing.four + Spacing.two,
     right: Spacing.two,
     zIndex: 20,
   },

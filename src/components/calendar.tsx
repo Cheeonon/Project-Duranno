@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import {
@@ -18,6 +18,10 @@ type CalendarZoom = 'compact' | 'expanded';
 
 type CalendarProps = {
   activeFilters?: CalendarFilterCategory[];
+  collapseWithPreservedPosition?: (
+    anchorRef: RefObject<View | null>,
+    onCollapse: () => void,
+  ) => void;
 };
 
 function getMarkerColor(category: CalendarFilterCategory) {
@@ -67,16 +71,28 @@ function getCategoryLabel(category: CalendarFilterCategory) {
   return CALENDAR_FILTER_OPTIONS.find((option) => option.id === category)?.label ?? category;
 }
 
-export function Calendar({ activeFilters = [] }: CalendarProps) {
+export function Calendar({ activeFilters = [], collapseWithPreservedPosition }: CalendarProps) {
   const theme = useTheme();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+  const zoomAnchorRef = useRef<View>(null);
   const [today, setToday] = useState(() => new Date());
   const [viewDate, setViewDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [zoom, setZoom] = useState<CalendarZoom>('compact');
+  const [zoom, setZoom] = useState<CalendarZoom>('expanded');
 
   const isExpanded = zoom === 'expanded';
+
+  const collapseToCompact = () => {
+    const collapse = () => setZoom('compact');
+
+    if (collapseWithPreservedPosition) {
+      collapseWithPreservedPosition(zoomAnchorRef, collapse);
+      return;
+    }
+
+    collapse();
+  };
 
   useEffect(() => {
     const tick = () => setToday(new Date());
@@ -165,11 +181,11 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
         </Pressable>
       </View>
 
-      <View style={styles.zoomControls}>
+      <View ref={zoomAnchorRef} style={styles.zoomControls}>
         <Pressable
           accessibilityLabel="축소"
           disabled={!isExpanded}
-          onPress={() => setZoom('compact')}
+          onPress={collapseToCompact}
           style={({ pressed }) => [
             styles.zoomButton,
             { borderColor: theme.border },
@@ -267,13 +283,6 @@ export function Calendar({ activeFilters = [] }: CalendarProps) {
                         ]}>
                         <ThemedText type="smallBold" style={styles.expandedEventTitle} numberOfLines={2}>
                           {event.title}
-                        </ThemedText>
-                        <ThemedText
-                          type="small"
-                          themeColor="textSecondary"
-                          style={styles.expandedEventDetail}
-                          numberOfLines={2}>
-                          {event.detail}
                         </ThemedText>
                       </View>
                     ))}
@@ -474,16 +483,10 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     paddingLeft: 4,
     paddingVertical: 2,
-    gap: 2,
   },
   expandedEventTitle: {
     fontSize: FontSize.micro,
     lineHeight: 12,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
-  },
-  expandedEventDetail: {
-    fontSize: FontSize.micro,
-    lineHeight: 11,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   expandedEmptySpace: {

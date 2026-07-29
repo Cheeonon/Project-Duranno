@@ -51,6 +51,7 @@ export function usePreservedCollapse(scrollRef: RefObject<ScrollView | null>) {
 
   return {
     handleScroll,
+    collapseWithPreservedPosition,
     toggleWithPreservedPosition,
     preserveScrollPosition,
     scrollOffsetRef,

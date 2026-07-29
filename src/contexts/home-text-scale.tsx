@@ -1,5 +1,15 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
+const STORAGE_KEY = 'duranno.textScaleIndex';
 const TEXT_SCALE_STEPS = [0.85, 0.92, 1, 1.08, 1.16] as const;
 const DEFAULT_SCALE_INDEX = 2;
 
@@ -15,8 +25,47 @@ type HomeTextScaleContextValue = {
 
 const HomeTextScaleContext = createContext<HomeTextScaleContextValue | null>(null);
 
+function clampScaleIndex(index: number) {
+  return Math.min(TEXT_SCALE_STEPS.length - 1, Math.max(0, Math.round(index)));
+}
+
 export function HomeTextScaleProvider({ children }: { children: ReactNode }) {
   const [scaleIndex, setScaleIndex] = useState(DEFAULT_SCALE_INDEX);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (cancelled || raw == null) {
+          return;
+        }
+
+        const parsed = Number.parseInt(raw, 10);
+        if (!Number.isNaN(parsed)) {
+          setScaleIndex(clampScaleIndex(parsed));
+        }
+      } finally {
+        if (!cancelled) {
+          setHydrated(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    void AsyncStorage.setItem(STORAGE_KEY, String(scaleIndex));
+  }, [hydrated, scaleIndex]);
 
   const scale = TEXT_SCALE_STEPS[scaleIndex];
 
