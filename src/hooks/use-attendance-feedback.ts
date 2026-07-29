@@ -33,18 +33,18 @@ export function useAttendanceFeedback() {
   const trigger = (kind: AttendanceFeedbackKind) => {
     switch (kind) {
       case 'present':
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         replay(presentPlayer);
         break;
       case 'absent':
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         replay(absentPlayer);
         break;
       case 'open':
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         break;
       case 'saved':
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
         replay(absentPlayer);
         break;
     }

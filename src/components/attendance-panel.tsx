@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -56,6 +56,23 @@ export function AttendancePanel() {
   const [absenceEditor, setAbsenceEditor] = useState<AbsenceEditorTarget | null>(null);
   const [reasonDraft, setReasonDraft] = useState('');
   const absencePrefillRequest = useRef(0);
+  const reasonInputRef = useRef<TextInput>(null);
+
+  const focusReasonInput = () => {
+    // Modal animation / mobile browsers need a short delay before focus opens the keyboard.
+    requestAnimationFrame(() => {
+      reasonInputRef.current?.focus();
+      setTimeout(() => reasonInputRef.current?.focus(), Platform.OS === 'web' ? 120 : 50);
+    });
+  };
+
+  useEffect(() => {
+    if (!absenceEditor) {
+      return;
+    }
+
+    focusReasonInput();
+  }, [absenceEditor]);
 
   const goToPrevMonth = () => {
     setViewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
@@ -117,17 +134,18 @@ export function AttendancePanel() {
   const getAbsenceCellHandlers = (memberId: string, memberName: string, date: Date) => {
     const openEditor = () => openAbsenceEditor(memberId, memberName, date);
 
-    return Platform.select({
-      web: {
-        onContextMenu: (event: { preventDefault: () => void }) => {
-          event.preventDefault();
-          openEditor();
-        },
-      },
-      default: {
-        onLongPress: openEditor,
-      },
-    });
+    return {
+      onLongPress: openEditor,
+      delayLongPress: 450,
+      ...(Platform.OS === 'web'
+        ? {
+            onContextMenu: (event: { preventDefault: () => void }) => {
+              event.preventDefault();
+              openEditor();
+            },
+          }
+        : null),
+    };
   };
 
   return (
@@ -237,18 +255,23 @@ export function AttendancePanel() {
       </ScrollView>
 
       <ThemedText type="code" themeColor="textSecondary" style={styles.demoNote}>
-        클릭으로 출석 체크 · {Platform.OS === 'web' ? '우클릭' : '길게 눌러'} 결석 사유 입력
+        클릭으로 출석 체크 · 길게 눌러 결석 사유 입력
+        {Platform.OS === 'web' ? ' (PC는 우클릭)' : ''}
       </ThemedText>
 
       <Modal
         visible={absenceEditor !== null}
         transparent
         animationType="fade"
+        onShow={focusReasonInput}
         onRequestClose={closeAbsenceEditor}>
-        <Pressable style={styles.modalOverlay} onPress={closeAbsenceEditor}>
-          <View
-            style={[styles.modalCard, { backgroundColor: theme.background }]}
-            onStartShouldSetResponder={() => true}>
+        <View style={styles.modalOverlay}>
+          <Pressable
+            accessibilityLabel="결석 사유 닫기"
+            onPress={closeAbsenceEditor}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[styles.modalCard, { backgroundColor: theme.background }]}>
             <ThemedText type="smallBold" style={styles.modalTitle}>
               결석 사유
             </ThemedText>
@@ -257,6 +280,7 @@ export function AttendancePanel() {
             </ThemedText>
 
             <TextInput
+              ref={reasonInputRef}
               value={reasonDraft}
               onChangeText={setReasonDraft}
               onSubmitEditing={saveAbsenceReason}
@@ -265,6 +289,7 @@ export function AttendancePanel() {
               placeholder="예: 해외 출장, 몸살, 가족 행사"
               placeholderTextColor={theme.textSecondary}
               autoFocus
+              showSoftInputOnFocus
               style={[
                 styles.reasonInput,
                 {
@@ -297,7 +322,7 @@ export function AttendancePanel() {
               </Pressable>
             </View>
           </View>
-        </Pressable>
+        </View>
       </Modal>
     </ThemedView>
   );
@@ -386,6 +411,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
+    ...Platform.select({
+      web: {
+        // Prevent mobile Safari text selection / callout from eating the long-press.
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+      },
+      default: {},
+    }),
   },
   attendanceCellPresent: {
     backgroundColor: Accent.green,
@@ -413,6 +447,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     padding: Spacing.three,
     gap: Spacing.two,
+    zIndex: 1,
   },
   modalTitle: {
     fontSize: FontSize.body,
