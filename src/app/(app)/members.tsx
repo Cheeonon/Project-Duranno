@@ -10,8 +10,9 @@ import { useAuth } from '@/contexts/auth-context';
 import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
 import { formatMemberDob, searchChurchMembers } from '@/lib/member-search';
+import { formatCellHistoryPeriod } from '@/lib/cell-history';
 import { supabase } from '@/lib/supabase';
-import type { ChurchPosition, Gender, Member, MemberPermission } from '@/types/member';
+import type { CellGroupMembership, ChurchPosition, Gender, Member, MemberPermission } from '@/types/member';
 
 const POSITION_OPTIONS: ChurchPosition[] = [
   '목사',
@@ -48,6 +49,31 @@ function canEditMember(
     return (member.cellLeaderId ?? member.id) === myEffectiveLeaderId;
   }
   return false;
+}
+
+function PreviousCellHistory({ history }: { history: CellGroupMembership[] }) {
+  if (history.length === 0) {
+    return null;
+  }
+
+  const isVirtual = history.some((entry) => entry.isVirtual);
+
+  return (
+    <View style={styles.historyBlock}>
+      <ThemedText type="small" themeColor="textSecondary">
+        예전 셀{isVirtual ? ' (예시)' : ''}
+      </ThemedText>
+      {history.map((entry) => (
+        <ThemedText
+          key={`${entry.cellGroup}-${entry.from}-${entry.to}`}
+          type="small"
+          themeColor="textSecondary"
+          style={styles.historyRow}>
+          · {entry.cellGroup} · {formatCellHistoryPeriod(entry.from, entry.to)}
+        </ThemedText>
+      ))}
+    </View>
+  );
 }
 
 export default function MembersScreen() {
@@ -222,6 +248,7 @@ export default function MembersScreen() {
                 <ThemedText type="small" themeColor="textSecondary">
                   셀그룹 · {member.cellGroup}
                 </ThemedText>
+                <PreviousCellHistory history={member.previousCellGroups} />
                 <ThemedText type="small" themeColor="textSecondary">
                   주소 · {member.address || '-'}
                 </ThemedText>
@@ -511,6 +538,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  historyBlock: {
+    gap: 2,
+    marginTop: 2,
+  },
+  historyRow: {
+    paddingLeft: Spacing.one,
   },
   cardActions: {
     flexDirection: 'row',

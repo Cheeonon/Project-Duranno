@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -46,11 +46,13 @@ export function AttendancePanel() {
     error: attendanceError,
     setPresent,
     setAbsenceReason,
+    getPrefillAbsenceReason,
   } = useAttendance(memberIds, sundays);
   const isLoading = membersLoading || attendanceLoading;
   const error = membersError ?? attendanceError;
   const [absenceEditor, setAbsenceEditor] = useState<AbsenceEditorTarget | null>(null);
   const [reasonDraft, setReasonDraft] = useState('');
+  const absencePrefillRequest = useRef(0);
 
   const goToPrevMonth = () => {
     setViewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
@@ -70,6 +72,7 @@ export function AttendancePanel() {
 
   const openAbsenceEditor = (memberId: string, memberName: string, date: Date) => {
     const key = getAttendanceKey(memberId, date);
+    const requestId = ++absencePrefillRequest.current;
     triggerFeedback('open');
     setAbsenceEditor({
       memberId,
@@ -77,10 +80,22 @@ export function AttendancePanel() {
       date,
       dateLabel: formatAttendanceDate(date),
     });
-    setReasonDraft(absenceReasons[key] ?? '');
+    // Show this date's reason immediately when present; otherwise load the
+    // member's most recent prior absence reason as a prefill.
+    const existing = absenceReasons[key] ?? '';
+    setReasonDraft(existing);
+    if (!existing) {
+      void getPrefillAbsenceReason(memberId, date).then((prefill) => {
+        if (absencePrefillRequest.current !== requestId) {
+          return;
+        }
+        setReasonDraft((current) => (current.trim() ? current : prefill));
+      });
+    }
   };
 
   const closeAbsenceEditor = () => {
+    absencePrefillRequest.current += 1;
     setAbsenceEditor(null);
     setReasonDraft('');
   };

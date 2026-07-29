@@ -132,5 +132,39 @@ export function useAttendance(memberIds: string[], sundays: Date[]) {
       });
   }, []);
 
-  return { ...state, setPresent, setAbsenceReason };
+  /**
+   * Prefill helper: current-date reason if set, otherwise the member's most recent
+   * prior absence reason (across months).
+   */
+  const getPrefillAbsenceReason = useCallback(
+    async (memberId: string, date: Date) => {
+      const key = getAttendanceKey(memberId, date);
+      const existing = state.absenceReasons[key]?.trim();
+      if (existing) {
+        return existing;
+      }
+
+      const dateStr = formatDateForDb(date);
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('absence_reason')
+        .eq('member_id', memberId)
+        .not('absence_reason', 'is', null)
+        .neq('absence_reason', '')
+        .lt('attended_date', dateStr)
+        .order('attended_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('이전 결석 사유 조회 실패:', error.message);
+        return '';
+      }
+
+      return data?.absence_reason?.trim() ?? '';
+    },
+    [state.absenceReasons],
+  );
+
+  return { ...state, setPresent, setAbsenceReason, getPrefillAbsenceReason };
 }

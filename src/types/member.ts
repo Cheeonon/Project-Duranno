@@ -21,8 +21,12 @@ export type MemberPermission = '성도' | '임원' | '셀장' | '사역자' | '�
 
 export type CellGroupMembership = {
   cellLeaderId: string | null; // null = they led their own cell during this period
+  /** Display label, e.g. "김민수 셀" */
+  cellGroup: string;
   from: string; // ISO date
   to: string; // ISO date
+  /** True when the row was synthesized because DB history was empty. */
+  isVirtual?: boolean;
 };
 
 export type Member = {

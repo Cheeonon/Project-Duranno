@@ -18,6 +18,7 @@ type AuthContextValue = {
   session: Session | null;
   profile: Profile | null;
   isLoading: boolean;
+  refreshProfile: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   changePassword: (newPassword: string) => Promise<{ error: string | null }>;
@@ -94,6 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       profile,
       isLoading,
+      refreshProfile: async () => {
+        const nextProfile = await fetchProfile(session?.user.id);
+        setProfile(nextProfile);
+      },
       signIn: async (email, password) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         return { error: error ? '이메일 또는 비밀번호가 올바르지 않습니다.' : null };

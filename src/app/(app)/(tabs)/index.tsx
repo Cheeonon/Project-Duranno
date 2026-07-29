@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedIcon } from '@/components/animated-icon';
@@ -8,6 +8,7 @@ import { AnimatedUserName } from '@/components/animated-user-name';
 import { AttendancePanel } from '@/components/attendance-panel';
 import { MemberSearchPanel } from '@/components/member-search-panel';
 import { HintRow } from '@/components/hint-row';
+import { TabScreenSlide } from '@/components/tab-screen-slide';
 import { ToggleHintRow } from '@/components/toggle-hint-row';
 import { UpcomingEventsSection } from '@/components/upcoming-events-section';
 import { TextSizeControl } from '@/components/text-size-control';
@@ -17,88 +18,109 @@ import { BorderRadius, BottomTabInset, FontSize, MaxContentWidth, Spacing } from
 import { useAuth } from '@/contexts/auth-context';
 import { HomeTextScaleProvider } from '@/contexts/home-text-scale';
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function HomeScreen() {
+  const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const { handleScroll, preserveScrollPosition } = usePreservedCollapse(scrollRef);
   const [showAttendance, setShowAttendance] = useState(false);
   const [showMemberSearch, setShowMemberSearch] = useState(false);
-  const { profile } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { profile, refreshProfile } = useAuth();
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshProfile();
+      setRefreshKey((current) => current + 1);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshProfile]);
 
   return (
-    <HomeTextScaleProvider>
-      <ThemedView style={styles.container}>
-        <TextSizeControl />
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView
-            ref={scrollRef}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets={false}
-            style={styles.scrollView}
-            contentContainerStyle={[
-              styles.scrollContent,
-              {
-                paddingTop: Spacing.two,
-                paddingBottom: BottomTabInset + Spacing.five,
-              },
-            ]}
-            showsVerticalScrollIndicator={false}>
-            <ThemedView style={styles.heroSection}>
-              <AnimatedIcon />
-              <ThemedText type="subtitle" style={styles.greeting}>
-                소중한{' '}
-                <AnimatedUserName name={profile?.nameKo ?? '성도'} />
-                님,{'\n'}
-                오늘도 교회를 위해 함께 해주셔서 감사해요.
-              </ThemedText>
-            </ThemedView>
-
-            <ThemedText type="code" style={styles.code}>
-              get started
-            </ThemedText>
-
-            <ThemedView type="backgroundElement" style={styles.stepContainer}>
-              <UpcomingEventsSection scrollRef={scrollRef} />
-
-              <ToggleHintRow
-                title="출결"
-                isOpen={showAttendance}
-                onToggle={() => setShowAttendance((current) => !current)}
-                hint={showAttendance ? '접기' : '셀그룹 보기'}
-                scrollRef={scrollRef}>
-                <AttendancePanel />
-              </ToggleHintRow>
-
-              <ToggleHintRow
-                title="교인 검색"
-                isOpen={showMemberSearch}
-                onToggle={() => setShowMemberSearch((current) => !current)}
-                hint={showMemberSearch ? '접기' : '검색하기'}
-                scrollRef={scrollRef}>
-                <MemberSearchPanel
-                  scrollRef={scrollRef}
-                  preserveScrollPosition={preserveScrollPosition}
+    <TabScreenSlide tabIndex={0}>
+      <HomeTextScaleProvider>
+        <ThemedView style={styles.container}>
+          <TextSizeControl />
+          <SafeAreaView style={styles.safeArea}>
+            <ScrollView
+              ref={scrollRef}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets={false}
+              style={styles.scrollView}
+              contentContainerStyle={[
+                styles.scrollContent,
+                {
+                  paddingTop: Spacing.two,
+                  paddingBottom: BottomTabInset + Spacing.five,
+                },
+              ]}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={theme.textSecondary}
+                  colors={[theme.textSecondary]}
                 />
-              </ToggleHintRow>
+              }>
+              <ThemedView style={styles.heroSection}>
+                <AnimatedIcon />
+                <ThemedText type="subtitle" style={styles.greeting}>
+                  소중한{' '}
+                  <AnimatedUserName name={profile?.nameKo ?? '성도'} />
+                  님,{'\n'}
+                  오늘도 교회를 위해 함께 해주셔서 감사해요.
+                </ThemedText>
+              </ThemedView>
 
-              <Link href="/members" asChild>
-                <Pressable>
-                  <HintRow title="성도관리" hint="바로가기" />
-                </Pressable>
-              </Link>
+              <ThemedView type="backgroundElement" style={styles.stepContainer}>
+                <UpcomingEventsSection key={`events-${refreshKey}`} scrollRef={scrollRef} />
 
-              <Link href="/settings" asChild>
-                <Pressable>
-                  <HintRow title="설정" hint="바로가기" />
-                </Pressable>
-              </Link>
-            </ThemedView>
-          </ScrollView>
-        </SafeAreaView>
-      </ThemedView>
-    </HomeTextScaleProvider>
+                <ToggleHintRow
+                  title="출결"
+                  isOpen={showAttendance}
+                  onToggle={() => setShowAttendance((current) => !current)}
+                  hint={showAttendance ? '접기' : '셀그룹 보기'}
+                  scrollRef={scrollRef}>
+                  <AttendancePanel key={`attendance-${refreshKey}`} />
+                </ToggleHintRow>
+
+                <ToggleHintRow
+                  title="교인 검색"
+                  isOpen={showMemberSearch}
+                  onToggle={() => setShowMemberSearch((current) => !current)}
+                  hint={showMemberSearch ? '접기' : '검색하기'}
+                  scrollRef={scrollRef}>
+                  <MemberSearchPanel
+                    key={`search-${refreshKey}`}
+                    scrollRef={scrollRef}
+                    preserveScrollPosition={preserveScrollPosition}
+                  />
+                </ToggleHintRow>
+
+                <Link href="/members" asChild>
+                  <Pressable>
+                    <HintRow title="성도관리" hint="바로가기" />
+                  </Pressable>
+                </Link>
+
+                <Link href="/settings" asChild>
+                  <Pressable>
+                    <HintRow title="설정" hint="바로가기" />
+                  </Pressable>
+                </Link>
+              </ThemedView>
+            </ScrollView>
+          </SafeAreaView>
+        </ThemedView>
+      </HomeTextScaleProvider>
+    </TabScreenSlide>
   );
 }
 
@@ -132,10 +154,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.hero,
     lineHeight: 30,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
-  },
-  code: {
-    textTransform: 'uppercase',
-    textAlign: 'center',
   },
   stepContainer: {
     gap: Spacing.three,

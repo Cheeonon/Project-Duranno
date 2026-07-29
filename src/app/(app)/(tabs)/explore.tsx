@@ -7,6 +7,7 @@ import {
   CalendarFilterSection,
   type CalendarFilterCategory,
 } from '@/components/calendar-filter';
+import { TabScreenSlide } from '@/components/tab-screen-slide';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -46,29 +47,31 @@ export default function CalendarScreen() {
   };
 
   return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">달력</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            교회 일정과 출결을 확인할 수 있는 달력입니다.
-          </ThemedText>
-        </ThemedView>
+    <TabScreenSlide tabIndex={1}>
+      <ScrollView
+        style={[styles.scrollView, { backgroundColor: theme.background }]}
+        contentInset={insets}
+        contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
+        <ThemedView style={styles.container}>
+          <ThemedView style={styles.titleContainer}>
+            <ThemedText type="subtitle">달력</ThemedText>
+            <ThemedText style={styles.centerText} themeColor="textSecondary">
+              교회 일정과 출결을 확인할 수 있는 달력입니다.
+            </ThemedText>
+          </ThemedView>
 
-        <View style={styles.calendarSection}>
-          <CalendarFilterSection
-            selectedFilters={selectedFilters}
-            onToggleFilter={toggleFilter}
-          />
-          <View style={styles.calendarWrapper}>
-            <Calendar activeFilters={selectedFilters} />
+          <View style={styles.calendarSection}>
+            <CalendarFilterSection
+              selectedFilters={selectedFilters}
+              onToggleFilter={toggleFilter}
+            />
+            <View style={styles.calendarWrapper}>
+              <Calendar activeFilters={selectedFilters} />
+            </View>
           </View>
-        </View>
-      </ThemedView>
-    </ScrollView>
+        </ThemedView>
+      </ScrollView>
+    </TabScreenSlide>
   );
 }
 
