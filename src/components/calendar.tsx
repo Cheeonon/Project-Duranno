@@ -3,11 +3,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import {
   CALENDAR_FILTER_OPTIONS,
+  CalendarFilterSection,
   type CalendarFilterCategory,
 } from '@/components/calendar-filter';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getDayEvents, getDayMarkers } from '@/constants/calendar-demo';
+import { getDayEvents, getDayMarkers, type CalendarEventRecord } from '@/lib/calendar-events';
 import { Accent, BorderRadius, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -17,7 +18,12 @@ const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 type CalendarZoom = 'compact' | 'expanded';
 
 type CalendarProps = {
+  events: CalendarEventRecord[];
   activeFilters?: CalendarFilterCategory[];
+  onToggleFilter?: (filter: CalendarFilterCategory) => void;
+  canManageEvents?: boolean;
+  onAddEvent?: (date: Date) => void;
+  onEditEvent?: (event: CalendarEventRecord) => void;
   collapseWithPreservedPosition?: (
     anchorRef: RefObject<View | null>,
     onCollapse: () => void,
@@ -58,20 +64,19 @@ function formatKoreanDate(date: Date) {
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${weekdays[date.getDay()]})`;
 }
 
-function formatTime(date: Date) {
-  return date.toLocaleTimeString('ko-KR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-}
-
 function getCategoryLabel(category: CalendarFilterCategory) {
   return CALENDAR_FILTER_OPTIONS.find((option) => option.id === category)?.label ?? category;
 }
 
-export function Calendar({ activeFilters = [], collapseWithPreservedPosition }: CalendarProps) {
+export function Calendar({
+  events,
+  activeFilters = [],
+  onToggleFilter,
+  canManageEvents = false,
+  onAddEvent,
+  onEditEvent,
+  collapseWithPreservedPosition,
+}: CalendarProps) {
   const theme = useTheme();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -95,8 +100,11 @@ export function Calendar({ activeFilters = [], collapseWithPreservedPosition }: 
   };
 
   useEffect(() => {
+    // Only used for "is this day today" grid highlighting / the "오늘로 이동"
+    // button — day-level accuracy is enough, so this just needs to catch a
+    // midnight rollover, not tick every second.
     const tick = () => setToday(new Date());
-    const interval = setInterval(tick, 1000);
+    const interval = setInterval(tick, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -104,6 +112,28 @@ export function Calendar({ activeFilters = [], collapseWithPreservedPosition }: 
     () => getCalendarDays(viewDate.getFullYear(), viewDate.getMonth()),
     [viewDate],
   );
+
+  const dayCells = useMemo(
+    () =>
+      days.map((date) => ({
+        date,
+        dayEvents: date ? getDayEvents(events, date, activeFilters) : [],
+        markers: date ? getDayMarkers(events, date, activeFilters) : [],
+      })),
+    [days, events, activeFilters],
+  );
+
+  // Grouped into weeks (rather than a flat flex-wrap grid) so each week can
+  // be given an equal flex share of whatever height the screen has to offer
+  // — the grid always fills its container exactly, with no page scrolling,
+  // no matter how many weeks the month spans or how tall the device is.
+  const weekRows = useMemo(() => {
+    const rows: (typeof dayCells)[] = [];
+    for (let i = 0; i < dayCells.length; i += 7) {
+      rows.push(dayCells.slice(i, i + 7));
+    }
+    return rows;
+  }, [dayCells]);
 
   const goToPrevMonth = () => {
     setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
@@ -127,8 +157,11 @@ export function Calendar({ activeFilters = [], collapseWithPreservedPosition }: 
       return;
     }
 
-    const events = getDayEvents(date.getDate(), activeFilters);
-    if (events.length === 0) {
+    const eventsForDay = getDayEvents(events, date, activeFilters);
+    if (eventsForDay.length === 0) {
+      if (canManageEvents) {
+        onAddEvent?.(date);
+      }
       return;
     }
 
@@ -144,23 +177,16 @@ export function Calendar({ activeFilters = [], collapseWithPreservedPosition }: 
     selectedDate &&
     selectedDate.getFullYear() === viewDate.getFullYear() &&
     selectedDate.getMonth() === viewDate.getMonth()
-      ? getDayEvents(selectedDate.getDate(), activeFilters)
+      ? getDayEvents(events, selectedDate, activeFilters)
       : [];
 
   const isCurrentMonth =
     viewDate.getFullYear() === today.getFullYear() && viewDate.getMonth() === today.getMonth();
 
   return (
-    <ThemedView type="backgroundElement" style={styles.container}>
-      <View style={[styles.todayBanner, { borderBottomColor: theme.border }]}>
-        <ThemedText type="smallBold" style={styles.bannerDate}>
-          {formatKoreanDate(today)}
-        </ThemedText>
-        <ThemedText type="code" themeColor="textSecondary" style={styles.bannerTime}>
-          {formatTime(today)}
-        </ThemedText>
-      </View>
-
+    <ThemedView
+      type="backgroundElement"
+      style={[styles.container, isDark ? styles.containerShadowDark : styles.containerShadowLight]}>
       <View style={styles.header}>
         <Pressable
           accessibilityLabel="이전 달"
@@ -180,6 +206,14 @@ export function Calendar({ activeFilters = [], collapseWithPreservedPosition }: 
           <ThemedText type="smallBold">›</ThemedText>
         </Pressable>
       </View>
+
+      {onToggleFilter && (
+        <CalendarFilterSection
+          layout="panel"
+          selectedFilters={activeFilters}
+          onToggleFilter={onToggleFilter}
+        />
+      )}
 
       <View ref={zoomAnchorRef} style={styles.zoomControls}>
         <Pressable
@@ -233,97 +267,138 @@ export function Calendar({ activeFilters = [], collapseWithPreservedPosition }: 
       </View>
 
       <View style={styles.grid}>
-        {days.map((date, index) => {
-          const isToday = date ? isSameDay(date, today) : false;
-          const isSunday = date?.getDay() === 0;
-          const isSelected = date && selectedDate ? isSameDay(date, selectedDate) : false;
-          const dayEvents = date ? getDayEvents(date.getDate(), activeFilters) : [];
-          const markers = date ? getDayMarkers(date.getDate(), activeFilters) : [];
-          const hasEvents = dayEvents.length > 0;
+        {weekRows.map((week, weekIndex) => (
+          <View key={weekIndex} style={styles.weekRow}>
+            {week.map(({ date, dayEvents, markers }, index) => {
+              const isToday = date ? isSameDay(date, today) : false;
+              const isSunday = date?.getDay() === 0;
+              const isSelected = date && selectedDate ? isSameDay(date, selectedDate) : false;
+              const hasEvents = dayEvents.length > 0;
 
-          const dayInner = (
-            <View style={[styles.dayContent, isExpanded && styles.dayContentExpanded]}>
-              <View
-                style={[
-                  styles.dayCell,
-                  isExpanded && styles.dayCellExpanded,
-                  isToday && { backgroundColor: Accent.green },
-                  isSelected &&
-                    !isToday && {
-                      backgroundColor: isDark ? '#2F4036' : '#DCFCE7',
-                      borderWidth: 1,
-                      borderColor: Accent.green,
-                    },
-                ]}>
-                <ThemedText
-                  type="small"
-                  style={[
-                    styles.dayText,
-                    isSunday && !isToday && styles.sundayText,
-                    isToday && styles.todayText,
-                    isSelected &&
-                      !isToday && {
-                        color: isDark ? '#A7F3C0' : '#15803D',
-                        fontWeight: '700',
-                      },
-                  ]}>
-                  {date?.getDate()}
-                </ThemedText>
-              </View>
-
-              {isExpanded ? (
-                hasEvents ? (
-                  <View style={styles.expandedEvents}>
-                    {dayEvents.map((event) => (
-                      <View
-                        key={`${event.category}-${event.title}`}
-                        style={[
-                          styles.expandedEventCard,
-                          { borderLeftColor: getMarkerColor(event.category) },
-                        ]}>
-                        <ThemedText type="smallBold" style={styles.expandedEventTitle} numberOfLines={2}>
-                          {event.title}
-                        </ThemedText>
-                      </View>
-                    ))}
+              const dayInner = (
+                <View style={[styles.dayContent, isExpanded && styles.dayContentExpanded]}>
+                  <View
+                    style={[
+                      styles.dayCell,
+                      isExpanded && styles.dayCellExpanded,
+                      isToday && { backgroundColor: Accent.green },
+                      isSelected &&
+                        !isToday && {
+                          backgroundColor: isDark ? '#2F4036' : '#DCFCE7',
+                          borderWidth: 1,
+                          borderColor: Accent.green,
+                        },
+                    ]}>
+                    <ThemedText
+                      type="small"
+                      style={[
+                        styles.dayText,
+                        isSunday && !isToday && styles.sundayText,
+                        isToday && styles.todayText,
+                        isSelected &&
+                          !isToday && {
+                            color: isDark ? '#A7F3C0' : '#15803D',
+                            fontWeight: '700',
+                          },
+                      ]}>
+                      {date?.getDate()}
+                    </ThemedText>
                   </View>
-                ) : (
-                  <View style={styles.expandedEmptySpace} />
-                )
-              ) : markers.length > 0 ? (
-                <View style={styles.markerRow}>
-                  {markers.map((marker) => (
-                    <View
-                      key={marker}
-                      style={[styles.markerDot, { backgroundColor: getMarkerColor(marker) }]}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.markerSpacer} />
-              )}
-            </View>
-          );
 
-          return (
-            <View
-              key={`${date?.toISOString() ?? 'empty'}-${index}`}
-              style={[styles.cell, isExpanded ? styles.cellExpanded : styles.cellCompact]}>
-              {date ? (
-                !isExpanded && hasEvents ? (
-                  <Pressable
-                    accessibilityLabel={`${date.getDate()}일 일정 보기`}
-                    onPress={() => handleDayPress(date)}
-                    style={({ pressed }) => [styles.dayPressable, pressed && styles.pressed]}>
-                    {dayInner}
-                  </Pressable>
-                ) : (
-                  <View style={styles.dayPressable}>{dayInner}</View>
-                )
-              ) : null}
-            </View>
-          );
-        })}
+                  {isExpanded ? (
+                    hasEvents ? (
+                      <View style={styles.expandedEvents}>
+                        {dayEvents.map((event) => {
+                          const card = (
+                            <View
+                              style={[
+                                styles.expandedEventCard,
+                                { borderLeftColor: getMarkerColor(event.category) },
+                              ]}>
+                              <ThemedText
+                                type="smallBold"
+                                style={styles.expandedEventTitle}
+                                numberOfLines={2}>
+                                {event.title}
+                              </ThemedText>
+                            </View>
+                          );
+
+                          if (!canManageEvents) {
+                            return <View key={event.id}>{card}</View>;
+                          }
+
+                          return (
+                            <Pressable
+                              key={event.id}
+                              accessibilityLabel={`${event.title} 수정`}
+                              onPress={() => onEditEvent?.(event)}
+                              style={({ pressed }) => pressed && styles.pressed}>
+                              {card}
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    ) : canManageEvents && date ? (
+                      <Pressable
+                        accessibilityLabel={`${date.getDate()}일 일정 추가`}
+                        onPress={() => onAddEvent?.(date)}
+                        style={({ pressed }) => [
+                          styles.expandedEmptySpace,
+                          pressed && styles.pressed,
+                        ]}
+                      />
+                    ) : (
+                      <View style={styles.expandedEmptySpace} />
+                    )
+                  ) : markers.length > 0 ? (
+                    <View style={styles.markerRow}>
+                      {markers.map((marker) => (
+                        <View
+                          key={marker}
+                          style={[styles.markerDot, { backgroundColor: getMarkerColor(marker) }]}
+                        />
+                      ))}
+                    </View>
+                  ) : (
+                    <View style={styles.markerSpacer} />
+                  )}
+                </View>
+              );
+
+              return (
+                <View
+                  key={`${weekIndex}-${date?.toISOString() ?? 'empty'}-${index}`}
+                  style={[
+                    styles.cell,
+                    isExpanded ? styles.cellExpanded : styles.cellCompact,
+                    { borderBottomColor: theme.border },
+                  ]}>
+                  {date ? (
+                    !isExpanded && (hasEvents || canManageEvents) ? (
+                      <Pressable
+                        accessibilityLabel={
+                          hasEvents ? `${date.getDate()}일 일정 보기` : `${date.getDate()}일 일정 추가`
+                        }
+                        onPress={() => handleDayPress(date)}
+                        style={({ pressed }) => [
+                          styles.dayPressable,
+                          !isExpanded && styles.dayPressableCompact,
+                          pressed && styles.pressed,
+                        ]}>
+                        {dayInner}
+                      </Pressable>
+                    ) : (
+                      <View style={[styles.dayPressable, !isExpanded && styles.dayPressableCompact]}>
+                        {dayInner}
+                      </View>
+                    )
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        ))}
       </View>
 
       {!isCurrentMonth && (
@@ -334,28 +409,56 @@ export function Calendar({ activeFilters = [], collapseWithPreservedPosition }: 
 
       {selectedDate && visibleSelectedEvents.length > 0 ? (
         <ThemedView type="backgroundSelected" style={styles.eventPanel}>
-          <ThemedText type="smallBold" style={styles.eventPanelTitle}>
-            {formatKoreanDate(selectedDate)}
-          </ThemedText>
+          <View style={styles.eventPanelHeader}>
+            <ThemedText type="smallBold" style={styles.eventPanelTitle}>
+              {formatKoreanDate(selectedDate)}
+            </ThemedText>
+            {canManageEvents && (
+              <Pressable
+                accessibilityLabel="일정 추가"
+                onPress={() => onAddEvent?.(selectedDate)}
+                style={({ pressed }) => [styles.addEventButton, pressed && styles.pressed]}>
+                <ThemedText type="smallBold" themeColor="textSecondary">
+                  + 추가
+                </ThemedText>
+              </Pressable>
+            )}
+          </View>
           <View style={styles.eventList}>
-            {visibleSelectedEvents.map((event) => (
-              <View key={`${event.category}-${event.title}`} style={styles.eventItem}>
-                <View style={styles.eventItemHeader}>
-                  <View
-                    style={[styles.eventCategoryDot, { backgroundColor: getMarkerColor(event.category) }]}
-                  />
-                  <ThemedText type="smallBold" style={styles.eventCategoryLabel}>
-                    {getCategoryLabel(event.category)}
+            {visibleSelectedEvents.map((event) => {
+              const item = (
+                <View style={styles.eventItem}>
+                  <View style={styles.eventItemHeader}>
+                    <View
+                      style={[styles.eventCategoryDot, { backgroundColor: getMarkerColor(event.category) }]}
+                    />
+                    <ThemedText type="smallBold" style={styles.eventCategoryLabel}>
+                      {getCategoryLabel(event.category)}
+                    </ThemedText>
+                  </View>
+                  <ThemedText type="smallBold" style={styles.eventTitle}>
+                    {event.title}
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.eventDetail}>
+                    {event.detail}
                   </ThemedText>
                 </View>
-                <ThemedText type="smallBold" style={styles.eventTitle}>
-                  {event.title}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.eventDetail}>
-                  {event.detail}
-                </ThemedText>
-              </View>
-            ))}
+              );
+
+              if (!canManageEvents) {
+                return <View key={event.id}>{item}</View>;
+              }
+
+              return (
+                <Pressable
+                  key={event.id}
+                  accessibilityLabel={`${event.title} 수정`}
+                  onPress={() => onEditEvent?.(event)}
+                  style={({ pressed }) => pressed && styles.pressed}>
+                  {item}
+                </Pressable>
+              );
+            })}
           </View>
         </ThemedView>
       ) : null}
@@ -371,6 +474,7 @@ export function Calendar({ activeFilters = [], collapseWithPreservedPosition }: 
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     alignSelf: 'center',
     width: '100%',
     maxWidth: MaxContentWidth,
@@ -378,11 +482,11 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
   },
-  todayBanner: {
-    alignItems: 'center',
-    gap: Spacing.half,
-    paddingBottom: Spacing.one,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  containerShadowLight: {
+    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.3)', inset: true }],
+  },
+  containerShadowDark: {
+    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.06)', inset: true }],
   },
   header: {
     flexDirection: 'row',
@@ -432,25 +536,32 @@ const styles = StyleSheet.create({
     fontSize: FontSize.micro,
   },
   grid: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  weekRow: {
+    flex: 1,
     flexDirection: 'row',
-    flexWrap: 'wrap',
   },
   cell: {
-    width: `${100 / 7}%`,
+    flex: 1,
     padding: 2,
+    overflow: 'hidden',
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   cellCompact: {
-    height: 38,
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
   cellExpanded: {
-    minHeight: 108,
     alignItems: 'stretch',
   },
   dayPressable: {
     flex: 1,
     width: '100%',
+  },
+  dayPressableCompact: {
+    justifyContent: 'center',
   },
   dayContent: {
     alignItems: 'center',
@@ -510,14 +621,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.micro,
     lineHeight: 14,
   },
-  bannerDate: {
-    fontSize: FontSize.caption,
-    lineHeight: 16,
-  },
-  bannerTime: {
-    fontSize: FontSize.micro,
-    lineHeight: 11,
-  },
   sundayText: {
     color: '#E5484D',
   },
@@ -530,9 +633,18 @@ const styles = StyleSheet.create({
     padding: Spacing.two,
     gap: Spacing.two,
   },
+  eventPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   eventPanelTitle: {
     fontSize: FontSize.caption,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  addEventButton: {
+    paddingVertical: 2,
+    paddingHorizontal: Spacing.one,
   },
   eventList: {
     gap: Spacing.two,

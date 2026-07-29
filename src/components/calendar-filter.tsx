@@ -43,9 +43,6 @@ export function CalendarFilterSection({
         <ThemedText type="smallBold" style={styles.title}>
           Filter
         </ThemedText>
-        <ThemedText type="code" themeColor="textSecondary" style={styles.demoNote}>
-          Demo
-        </ThemedText>
       </View>
 
       <View style={styles.optionsRow}>
@@ -150,10 +147,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.micro,
     lineHeight: 12,
     fontWeight: '700',
-  },
-  demoNote: {
-    fontSize: FontSize.micro,
-    textTransform: 'uppercase',
   },
   pressed: {
     opacity: 0.7,

@@ -43,4 +43,6 @@ export type Member = {
   previousCellGroups: CellGroupMembership[];
   address: string;
   gender: Gender;
+  photoPath: string | null; // storage object path, persisted
+  photoUrl?: string | null; // ephemeral signed URL, populated only by useMembers()
 };

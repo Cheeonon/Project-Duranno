@@ -1,45 +1,113 @@
-import { useRef, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Calendar } from '@/components/calendar';
+import { type CalendarFilterCategory } from '@/components/calendar-filter';
 import {
-  CalendarFilterSection,
-  type CalendarFilterCategory,
-} from '@/components/calendar-filter';
+  CalendarEventFormModal,
+  type CalendarEventFormValue,
+} from '@/components/calendar-event-form-modal';
 import { TabScreenSlide } from '@/components/tab-screen-slide';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
+import { useAuth } from '@/contexts/auth-context';
+import { useCalendarEvents } from '@/hooks/use-calendar-events';
 import { useTheme } from '@/hooks/use-theme';
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  updateCalendarEvent,
+  type CalendarEventRecord,
+} from '@/lib/calendar-events';
+
+function toISODate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export default function CalendarScreen() {
   const safeAreaInsets = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
-  const { handleScroll, collapseWithPreservedPosition } = usePreservedCollapse(scrollRef);
+  const { profile } = useAuth();
+  const { events, refresh } = useCalendarEvents();
   const [selectedFilters, setSelectedFilters] = useState<CalendarFilterCategory[]>([
     'birthdays',
     'events',
   ]);
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
-  };
+  const bottomInset = safeAreaInsets.bottom + BottomTabInset + Spacing.two;
   const theme = useTheme();
 
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.two,
-      paddingBottom: Spacing.four,
-    },
-  });
+  const canManageEvents =
+    profile?.permission === '임원' || profile?.permission === '관리자' || profile?.permission === '사역자';
+
+  const [formVisible, setFormVisible] = useState(false);
+  const [formInitial, setFormInitial] = useState<CalendarEventFormValue | null>(null);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const openAddEvent = (date: Date) => {
+    setFormInitial({
+      title: '',
+      detail: '',
+      category: 'events',
+      eventDate: toISODate(date),
+      recursAnnually: false,
+    });
+    setFormError(null);
+    setFormVisible(true);
+  };
+
+  const openEditEvent = (event: CalendarEventRecord) => {
+    setFormInitial({
+      id: event.id,
+      title: event.title,
+      detail: event.detail,
+      category: event.category,
+      eventDate: event.eventDate,
+      recursAnnually: event.recursAnnually,
+    });
+    setFormError(null);
+    setFormVisible(true);
+  };
+
+  const closeForm = () => {
+    setFormVisible(false);
+    setFormInitial(null);
+    setFormError(null);
+  };
+
+  const handleSubmit = async (value: CalendarEventFormValue) => {
+    setFormSubmitting(true);
+    try {
+      if (value.id) {
+        await updateCalendarEvent(value.id, value);
+      } else {
+        await createCalendarEvent(value);
+      }
+      closeForm();
+      refresh();
+    } catch (submitError) {
+      setFormError(submitError instanceof Error ? submitError.message : '일정을 저장하지 못했습니다.');
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setFormSubmitting(true);
+    try {
+      await deleteCalendarEvent(id);
+      closeForm();
+      refresh();
+    } catch (deleteError) {
+      setFormError(deleteError instanceof Error ? deleteError.message : '일정을 삭제하지 못했습니다.');
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
 
   const toggleFilter = (filter: CalendarFilterCategory) => {
     setSelectedFilters((current) =>
@@ -51,71 +119,108 @@ export default function CalendarScreen() {
 
   return (
     <TabScreenSlide tabIndex={1}>
-      <ScrollView
-        ref={scrollRef}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        style={[styles.scrollView, { backgroundColor: theme.background }]}
-        contentInset={insets}
-        contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
+      <View
+        style={[
+          styles.screen,
+          { backgroundColor: theme.background, paddingTop: safeAreaInsets.top, paddingBottom: bottomInset },
+        ]}>
         <ThemedView style={styles.container}>
           <ThemedView style={styles.titleContainer}>
-            <ThemedText type="subtitle">달력</ThemedText>
+            <View style={styles.titleRow}>
+              <ThemedText type="subtitle">달력</ThemedText>
+              {canManageEvents && (
+                <Pressable
+                  accessibilityLabel="일정 추가"
+                  onPress={() => openAddEvent(new Date())}
+                  style={({ pressed }) => [
+                    styles.addButton,
+                    { borderColor: theme.border },
+                    pressed && styles.pressed,
+                  ]}>
+                  <ThemedText type="smallBold">+ 일정 추가</ThemedText>
+                </Pressable>
+              )}
+            </View>
             <ThemedText style={styles.centerText} themeColor="textSecondary">
               교회 일정과 출결을 확인할 수 있는 달력입니다.
             </ThemedText>
           </ThemedView>
 
           <View style={styles.calendarSection}>
-            <CalendarFilterSection
-              selectedFilters={selectedFilters}
-              onToggleFilter={toggleFilter}
-            />
             <View style={styles.calendarWrapper}>
               <Calendar
+                events={events}
                 activeFilters={selectedFilters}
-                collapseWithPreservedPosition={collapseWithPreservedPosition}
+                onToggleFilter={toggleFilter}
+                canManageEvents={canManageEvents}
+                onAddEvent={openAddEvent}
+                onEditEvent={openEditEvent}
               />
             </View>
           </View>
         </ThemedView>
-      </ScrollView>
+      </View>
+
+      <CalendarEventFormModal
+        visible={formVisible}
+        initial={formInitial}
+        onClose={closeForm}
+        onSubmit={handleSubmit}
+        onDelete={canManageEvents ? handleDelete : undefined}
+        submitting={formSubmitting}
+        error={formError}
+      />
     </TabScreenSlide>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
+  screen: {
     flex: 1,
-  },
-  contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: 'center',
   },
   container: {
+    flex: 1,
+    alignSelf: 'stretch',
+    width: '100%',
     maxWidth: MaxContentWidth,
-    flexGrow: 1,
   },
   titleContainer: {
-    gap: Spacing.two,
+    gap: Spacing.one,
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.two,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.three,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  addButton: {
+    borderRadius: Spacing.half,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.half,
+    paddingHorizontal: Spacing.two,
   },
   centerText: {
     textAlign: 'center',
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   calendarSection: {
+    flex: 1,
     flexDirection: 'column',
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.five,
+    alignItems: 'stretch',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.two,
   },
   calendarWrapper: {
+    flex: 1,
     alignSelf: 'stretch',
     width: '100%',
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

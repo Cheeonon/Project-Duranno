@@ -9,9 +9,11 @@ import {
 import { CollapsiblePanel } from '@/components/collapsible-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getUpcomingEvents, type UpcomingEvent } from '@/constants/calendar-demo';
-import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
+import { useCalendarEvents } from '@/hooks/use-calendar-events';
+import { getUpcomingEvents, type UpcomingEvent } from '@/lib/calendar-events';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 
 function getCategoryColor(category: UpcomingEvent['category']) {
   return CALENDAR_FILTER_OPTIONS.find((option) => option.id === category)?.color ?? '#22C55E';
@@ -23,20 +25,32 @@ function getCategoryLabel(category: UpcomingEvent['category']) {
 
 type UpcomingEventsSectionProps = {
   scrollRef?: RefObject<ScrollView | null>;
+  // Must be the parent's live usePreservedCollapse() instance (the one wired
+  // to the ScrollView's onScroll), not a fresh call here — a fresh instance's
+  // scrollOffsetRef never tracks real scroll position.
+  collapseWithPreservedPosition?: (
+    anchorRef: RefObject<View | null>,
+    onCollapse: () => void,
+  ) => void;
 };
 
-export function UpcomingEventsSection({ scrollRef }: UpcomingEventsSectionProps) {
+export function UpcomingEventsSection({
+  scrollRef,
+  collapseWithPreservedPosition,
+}: UpcomingEventsSectionProps) {
+  const isDark = useColorScheme() === 'dark';
+  const theme = useTheme();
   const headerRef = useRef<View>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<CalendarFilterCategory[]>([
     'birthdays',
     'events',
   ]);
-  const { toggleWithPreservedPosition } = usePreservedCollapse(scrollRef ?? { current: null });
+  const { events } = useCalendarEvents();
 
   const upcomingEvents = useMemo(
-    () => getUpcomingEvents(new Date(), selectedFilters),
-    [selectedFilters],
+    () => getUpcomingEvents(events, new Date(), selectedFilters),
+    [events, selectedFilters],
   );
   const nextEvent = upcomingEvents[0];
 
@@ -55,8 +69,8 @@ export function UpcomingEventsSection({ scrollRef }: UpcomingEventsSectionProps)
   const handlePress = () => {
     const toggle = () => setIsOpen((current) => !current);
 
-    if (scrollRef) {
-      toggleWithPreservedPosition(isOpen, headerRef, toggle);
+    if (isOpen && scrollRef && collapseWithPreservedPosition) {
+      collapseWithPreservedPosition(headerRef, toggle);
       return;
     }
 
@@ -64,7 +78,9 @@ export function UpcomingEventsSection({ scrollRef }: UpcomingEventsSectionProps)
   };
 
   return (
-    <ThemedView type="backgroundSelected" style={styles.wrapper}>
+    <ThemedView
+      type="backgroundSelected"
+      style={[styles.wrapper, isDark ? styles.wrapperShadowDark : styles.wrapperShadowLight]}>
       <Pressable
         ref={headerRef}
         accessibilityLabel={`Upcoming Events ${isOpen ? '접기' : '펼치기'}`}
@@ -93,44 +109,57 @@ export function UpcomingEventsSection({ scrollRef }: UpcomingEventsSectionProps)
       </Pressable>
 
       <CollapsiblePanel isOpen={isOpen}>
-        <CalendarFilterSection
-          layout="panel"
-          selectedFilters={selectedFilters}
-          onToggleFilter={toggleFilter}
-        />
+        <ThemedView
+          type="backgroundElement"
+          style={[
+            styles.contentBox,
+            isDark ? styles.contentBoxShadowDark : styles.contentBoxShadowLight,
+          ]}>
+          <CalendarFilterSection
+            layout="panel"
+            selectedFilters={selectedFilters}
+            onToggleFilter={toggleFilter}
+          />
 
-        <View style={styles.eventsList}>
-          {upcomingEvents.length > 0 ? (
-            upcomingEvents.map((event) => (
-              <ThemedView
-                key={`${event.date.toISOString()}-${event.title}`}
-                type="background"
-                style={styles.eventCard}>
-                <View style={styles.eventHeader}>
-                  <ThemedText type="smallBold" style={styles.eventDate}>
-                    {event.dateLabel}
-                  </ThemedText>
-                  <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(event.category) }]}>
-                    <ThemedText style={styles.categoryBadgeText}>{getCategoryLabel(event.category)}</ThemedText>
+          <View style={styles.eventsList}>
+            {upcomingEvents.length > 0 ? (
+              upcomingEvents.map((event, index) => (
+                <ThemedView
+                  key={event.id}
+                  type="backgroundElement"
+                  style={[
+                    styles.eventCard,
+                    index < upcomingEvents.length - 1 && {
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: theme.border,
+                    },
+                  ]}>
+                  <View style={styles.eventHeader}>
+                    <ThemedText type="smallBold" style={styles.eventDate}>
+                      {event.dateLabel}
+                    </ThemedText>
+                    <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(event.category) }]}>
+                      <ThemedText style={styles.categoryBadgeText}>{getCategoryLabel(event.category)}</ThemedText>
+                    </View>
                   </View>
-                </View>
 
-                <ThemedText type="smallBold" style={styles.eventTitle}>
-                  {event.title}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.eventDetail}>
-                  {event.detail}
+                  <ThemedText type="smallBold" style={styles.eventTitle}>
+                    {event.title}
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.eventDetail}>
+                    {event.detail}
+                  </ThemedText>
+                </ThemedView>
+              ))
+            ) : (
+              <ThemedView type="background" style={styles.emptyState}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                  선택한 필터에 해당하는 일정이 없습니다.
                 </ThemedText>
               </ThemedView>
-            ))
-          ) : (
-            <ThemedView type="background" style={styles.emptyState}>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                선택한 필터에 해당하는 일정이 없습니다.
-              </ThemedText>
-            </ThemedView>
-          )}
-        </View>
+            )}
+          </View>
+        </ThemedView>
       </CollapsiblePanel>
     </ThemedView>
   );
@@ -141,6 +170,12 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     borderRadius: BorderRadius.lg,
     padding: Spacing.three,
+  },
+  wrapperShadowLight: {
+    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.3)', inset: true }],
+  },
+  wrapperShadowDark: {
+    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.06)', inset: true }],
   },
   headerRow: {
     flexDirection: 'row',
@@ -174,12 +209,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 6,
   },
-  eventsList: {
-    gap: Spacing.one,
-  },
-  eventCard: {
-    borderRadius: BorderRadius.sm,
+  contentBox: {
+    borderRadius: BorderRadius.lg,
     padding: Spacing.two,
+    gap: Spacing.two,
+  },
+  contentBoxShadowLight: {
+    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.3)', inset: true }],
+  },
+  contentBoxShadowDark: {
+    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.06)', inset: true }],
+  },
+  eventsList: {},
+  eventCard: {
+    paddingVertical: Spacing.two,
     gap: 4,
   },
   eventHeader: {

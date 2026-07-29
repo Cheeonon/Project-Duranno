@@ -9,8 +9,8 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    /** Deep leaf ink — soft enough to feel natural, dark enough to read */
-    text: '#1A281D',
+    /** Very dark neutral gray, not pure black */
+    text: '#333333',
     /** Soft mist — quiet green, a touch deeper than white */
     background: '#EEF4EF',
     /** Soft sage surfaces for cards / panels */

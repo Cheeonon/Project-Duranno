@@ -5,6 +5,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { StackScreenEnter } from '@/components/stack-screen-enter';
+import { TextSizeControl } from '@/components/text-size-control';
 import { BorderRadius, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
@@ -137,9 +138,12 @@ export default function SettingsScreen() {
             <ThemedText type="smallBold" style={styles.sectionTitle}>
               앱 설정
             </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.accountRole}>
-              추가 설정은 곧 제공될 예정입니다.
-            </ThemedText>
+            <View style={styles.settingRow}>
+              <ThemedText type="small" style={styles.settingRowLabel}>
+                글자 크기
+              </ThemedText>
+              <TextSizeControl />
+            </View>
           </ThemedView>
         </ThemedView>
       </ScrollView>
@@ -292,6 +296,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   accountRole: {
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  settingRowLabel: {
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   fieldGroup: {

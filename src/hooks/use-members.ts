@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { buildVirtualCellHistory } from '@/lib/cell-history';
+import { signMemberPhotoUrls } from '@/lib/member-photos';
 import { supabase } from '@/lib/supabase';
 import type {
   CellGroupMembership,
@@ -18,7 +19,7 @@ type MembersState = {
 
 const SELECT_COLUMNS =
   'id, name_ko, name_en, dob, gender, phone, address, household_head_id, permission, position, ' +
-  'cell_leader_id, cell_leader:members!cell_leader_id(name_ko)';
+  'cell_leader_id, cell_leader:members!cell_leader_id(name_ko), photo_path';
 
 type MemberRow = {
   id: string;
@@ -33,6 +34,7 @@ type MemberRow = {
   gender: string;
   cell_leader_id: string | null;
   cell_leader: { name_ko: string } | { name_ko: string }[] | null;
+  photo_path: string | null;
 };
 
 type HistoryRow = {
@@ -60,6 +62,7 @@ function mapRow(row: MemberRow, previousCellGroups: CellGroupMembership[]): Memb
     previousCellGroups,
     address: row.address ?? '',
     gender: row.gender as Gender,
+    photoPath: row.photo_path,
   };
 }
 
@@ -133,7 +136,17 @@ export function useMembers() {
       };
     });
 
-    setState({ members: withHistory, isLoading: false, error: null });
+    const photoPaths = withHistory
+      .map((member) => member.photoPath)
+      .filter((path): path is string => Boolean(path));
+    const photoUrlByPath = await signMemberPhotoUrls(photoPaths);
+
+    const withPhotos = withHistory.map((member) => ({
+      ...member,
+      photoUrl: member.photoPath ? (photoUrlByPath.get(member.photoPath) ?? null) : null,
+    }));
+
+    setState({ members: withPhotos, isLoading: false, error: null });
   }, []);
 
   useEffect(() => {

@@ -35,11 +35,16 @@ export default function AppTabs() {
 }
 
 export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+  const isDark = useColorScheme() === 'dark';
+
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={[styles.tabButtonView, isFocused && styles.tabButtonViewFocused]}>
+        style={[
+          styles.tabButtonView,
+          isFocused && (isDark ? styles.tabButtonViewFocusedDark : styles.tabButtonViewFocusedLight),
+        ]}>
         <ThemedText type="smallBold" themeColor={isFocused ? 'text' : 'textSecondary'} style={styles.navLabel}>
           {children}
         </ThemedText>
@@ -54,9 +59,14 @@ export function CustomTabList(props: TabListProps) {
 
   return (
     <View {...props} style={styles.tabListContainer}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
+      <ThemedView
+        type="backgroundElement"
+        style={[
+          styles.innerContainer,
+          scheme === 'dark' ? styles.innerContainerShadowDark : styles.innerContainerShadowLight,
+        ]}>
         <ThemedText type="smallBold" style={styles.brandText} numberOfLines={1}>
-          Duranno App Project
+          DURANNO
         </ThemedText>
 
         {props.children}
@@ -99,6 +109,12 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
   },
+  innerContainerShadowLight: {
+    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.3)', inset: true }],
+  },
+  innerContainerShadowDark: {
+    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.06)', inset: true }],
+  },
   brandText: {
     marginRight: 'auto',
     flexShrink: 1,
@@ -117,11 +133,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     borderRadius: BorderRadius.md,
   },
-  tabButtonViewFocused: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
+  tabButtonViewFocusedLight: {
+    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.35)', inset: true }],
+  },
+  tabButtonViewFocusedDark: {
+    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.07)', inset: true }],
   },
   settingsPressable: {
     flexDirection: 'row',

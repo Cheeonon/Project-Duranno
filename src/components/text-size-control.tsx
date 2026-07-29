@@ -1,6 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ThemedView } from '@/components/themed-view';
 import { Colors, FontSize, Spacing } from '@/constants/theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -11,57 +10,46 @@ export function TextSizeControl() {
   const { scaleLabel, canDecrease, canIncrease, decrease, increase } = useHomeTextScale();
 
   return (
-    <View style={styles.container} pointerEvents="box-none">
-      <ThemedView type="backgroundElement" style={styles.control}>
-        <Pressable
-          accessibilityLabel="글자 크기 줄이기"
-          disabled={!canDecrease}
-          onPress={decrease}
-          style={({ pressed }) => [
-            styles.button,
-            !canDecrease && styles.buttonDisabled,
-            pressed && canDecrease && styles.pressed,
-          ]}>
-          <Text style={[styles.buttonText, { color: colors.text }]}>A−</Text>
-        </Pressable>
+    <View style={styles.control}>
+      <Pressable
+        accessibilityLabel="글자 크기 줄이기"
+        disabled={!canDecrease}
+        onPress={decrease}
+        style={({ pressed }) => [
+          styles.button,
+          !canDecrease && styles.buttonDisabled,
+          pressed && canDecrease && styles.pressed,
+        ]}>
+        <Text style={[styles.buttonText, { color: colors.text }]}>A−</Text>
+      </Pressable>
 
-        <Text style={[styles.label, { color: colors.textSecondary }]}>{scaleLabel}</Text>
+      <Text style={[styles.label, { color: colors.textSecondary }]}>{scaleLabel}</Text>
 
-        <Pressable
-          accessibilityLabel="글자 크기 키우기"
-          disabled={!canIncrease}
-          onPress={increase}
-          style={({ pressed }) => [
-            styles.button,
-            !canIncrease && styles.buttonDisabled,
-            pressed && canIncrease && styles.pressed,
-          ]}>
-          <Text style={[styles.buttonTextLarge, { color: colors.text }]}>A+</Text>
-        </Pressable>
-      </ThemedView>
+      <Pressable
+        accessibilityLabel="글자 크기 키우기"
+        disabled={!canIncrease}
+        onPress={increase}
+        style={({ pressed }) => [
+          styles.button,
+          !canIncrease && styles.buttonDisabled,
+          pressed && canIncrease && styles.pressed,
+        ]}>
+        <Text style={[styles.buttonTextLarge, { color: colors.text }]}>A+</Text>
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: Spacing.four + Spacing.two,
-    right: Spacing.two,
-    zIndex: 20,
-  },
   control: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 1,
-    borderRadius: Spacing.half,
-    paddingHorizontal: 2,
-    paddingVertical: 1,
+    gap: Spacing.one,
   },
   button: {
-    width: 22,
-    height: 22,
-    borderRadius: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -69,17 +57,17 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   buttonText: {
-    fontSize: FontSize.micro,
-    lineHeight: 14,
+    fontSize: FontSize.small,
+    lineHeight: 16,
     fontWeight: '700',
   },
   buttonTextLarge: {
-    fontSize: FontSize.micro,
-    lineHeight: 14,
+    fontSize: FontSize.small,
+    lineHeight: 16,
     fontWeight: '700',
   },
   label: {
-    minWidth: 28,
+    minWidth: 36,
     textAlign: 'center',
     fontSize: FontSize.micro,
     fontWeight: '500',

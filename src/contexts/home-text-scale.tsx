@@ -9,7 +9,10 @@ import {
   type ReactNode,
 } from 'react';
 
-const STORAGE_KEY = 'duranno.textScaleIndex';
+import { useAuth } from '@/contexts/auth-context';
+import { supabase } from '@/lib/supabase';
+
+const STORAGE_KEY_PREFIX = 'duranno.textScaleIndex';
 const TEXT_SCALE_STEPS = [0.85, 0.92, 1, 1.08, 1.16] as const;
 const DEFAULT_SCALE_INDEX = 2;
 
@@ -30,22 +33,43 @@ function clampScaleIndex(index: number) {
 }
 
 export function HomeTextScaleProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
+  const userId = session?.user.id ?? null;
+
   const [scaleIndex, setScaleIndex] = useState(DEFAULT_SCALE_INDEX);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setHydrated(false);
+
+    if (!userId) {
+      setScaleIndex(DEFAULT_SCALE_INDEX);
+      return;
+    }
+
+    const storageKey = `${STORAGE_KEY_PREFIX}:${userId}`;
 
     void (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (cancelled || raw == null) {
-          return;
+        const raw = await AsyncStorage.getItem(storageKey);
+        if (!cancelled && raw != null) {
+          const parsed = Number.parseInt(raw, 10);
+          if (!Number.isNaN(parsed)) {
+            setScaleIndex(clampScaleIndex(parsed));
+          }
         }
 
-        const parsed = Number.parseInt(raw, 10);
-        if (!Number.isNaN(parsed)) {
-          setScaleIndex(clampScaleIndex(parsed));
+        const { data } = await supabase
+          .from('user_preferences')
+          .select('text_scale_index')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (!cancelled && data) {
+          const remoteIndex = clampScaleIndex(data.text_scale_index);
+          setScaleIndex(remoteIndex);
+          void AsyncStorage.setItem(storageKey, String(remoteIndex));
         }
       } finally {
         if (!cancelled) {
@@ -57,15 +81,25 @@ export function HomeTextScaleProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
-    if (!hydrated) {
+    if (!hydrated || !userId) {
       return;
     }
 
-    void AsyncStorage.setItem(STORAGE_KEY, String(scaleIndex));
-  }, [hydrated, scaleIndex]);
+    const storageKey = `${STORAGE_KEY_PREFIX}:${userId}`;
+    void AsyncStorage.setItem(storageKey, String(scaleIndex));
+
+    supabase
+      .from('user_preferences')
+      .upsert({ id: userId, text_scale_index: scaleIndex }, { onConflict: 'id' })
+      .then(({ error }) => {
+        if (error) {
+          console.error('글자 크기 저장 실패:', error.message);
+        }
+      });
+  }, [hydrated, scaleIndex, userId]);
 
   const scale = TEXT_SCALE_STEPS[scaleIndex];
 

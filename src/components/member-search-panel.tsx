@@ -1,6 +1,7 @@
 import { useMemo, useState, type RefObject } from 'react';
 import { ScrollView, StyleSheet, TextInput, View, type ScrollView as ScrollViewType } from 'react-native';
 
+import { MemberAvatar } from '@/components/member-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
@@ -64,7 +65,7 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
       />
 
       <ThemedText type="code" themeColor="textSecondary" style={styles.resultCount}>
-        {isLoading ? '불러오는 중...' : `${results.length}명 검색됨`}
+        {isLoading ? '불러오는 중...' : `${results.length}명`}
       </ThemedText>
 
       <ScrollView
@@ -77,9 +78,12 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
           results.map((member) => (
             <ThemedView key={member.id} type="background" style={[styles.resultCard, { borderColor: theme.border }]}>
               <View style={styles.resultHeader}>
-                <ThemedText type="smallBold" style={styles.memberName}>
-                  {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
-                </ThemedText>
+                <View style={styles.resultNameRow}>
+                  <MemberAvatar uri={member.photoUrl} nameKo={member.nameKo} size={44} />
+                  <ThemedText type="smallBold" style={styles.memberName}>
+                    {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
+                  </ThemedText>
+                </View>
                 <ThemedText type="code" themeColor="textSecondary" style={styles.memberRole}>
                   {member.position}
                 </ThemedText>
@@ -159,6 +163,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
+  },
+  resultNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    flexShrink: 1,
   },
   memberName: {
     fontSize: FontSize.body,

@@ -1,8 +1,10 @@
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MemberAvatar } from '@/components/member-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { StackScreenEnter } from '@/components/stack-screen-enter';
@@ -12,6 +14,7 @@ import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
 import { formatMemberDob, searchChurchMembers } from '@/lib/member-search';
 import { formatCellHistoryPeriod } from '@/lib/cell-history';
+import { deleteMemberPhoto, uploadMemberPhoto } from '@/lib/member-photos';
 import { supabase } from '@/lib/supabase';
 import type { CellGroupMembership, ChurchPosition, Gender, Member, MemberPermission } from '@/types/member';
 
@@ -104,17 +107,68 @@ export default function MembersScreen() {
   const [editDraft, setEditDraft] = useState<Member | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  // Path of a photo uploaded during this edit session but not yet saved to the
+  // member row — used to clean up the orphaned object if the user cancels.
+  const [uploadedPhotoThisSession, setUploadedPhotoThisSession] = useState<string | null>(null);
+  const [photoPreviewUri, setPhotoPreviewUri] = useState<string | null>(null);
 
   const openEdit = (member: Member) => {
     setEditingMember(member);
     setEditDraft({ ...member });
     setEditError(null);
+    setUploadedPhotoThisSession(null);
+    setPhotoPreviewUri(null);
   };
 
   const closeEdit = () => {
+    if (uploadedPhotoThisSession) {
+      deleteMemberPhoto(uploadedPhotoThisSession);
+    }
     setEditingMember(null);
     setEditDraft(null);
     setEditError(null);
+    setUploadedPhotoThisSession(null);
+    setPhotoPreviewUri(null);
+  };
+
+  const pickAndUploadPhoto = async () => {
+    if (!editDraft) {
+      return;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setEditError('사진 보관함 접근 권한이 필요합니다.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (result.canceled || result.assets.length === 0) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    setPhotoUploading(true);
+    try {
+      const path = await uploadMemberPhoto(editDraft.id, asset.uri, asset.mimeType ?? 'image/jpeg');
+      if (uploadedPhotoThisSession) {
+        deleteMemberPhoto(uploadedPhotoThisSession);
+      }
+      setUploadedPhotoThisSession(path);
+      setPhotoPreviewUri(asset.uri);
+      setEditDraft({ ...editDraft, photoPath: path });
+    } catch (uploadError) {
+      setEditError(uploadError instanceof Error ? uploadError.message : '사진 업로드에 실패했습니다.');
+    } finally {
+      setPhotoUploading(false);
+    }
   };
 
   const saveEdit = async () => {
@@ -135,6 +189,7 @@ export default function MembersScreen() {
         cell_leader_id: editDraft.cellLeaderId,
         permission: editDraft.permission,
         position: editDraft.position,
+        photo_path: editDraft.photoPath,
       })
       .eq('id', editDraft.id);
     setEditSubmitting(false);
@@ -144,6 +199,10 @@ export default function MembersScreen() {
       return;
     }
 
+    if (editingMember?.photoPath && editingMember.photoPath !== editDraft.photoPath) {
+      deleteMemberPhoto(editingMember.photoPath);
+    }
+    setUploadedPhotoThisSession(null);
     closeEdit();
     refresh();
   };
@@ -238,13 +297,16 @@ export default function MembersScreen() {
 
             return (
               <ThemedView key={member.id} type="backgroundElement" style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <ThemedText type="smallBold">
-                    {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
-                  </ThemedText>
-                  <ThemedText type="code" themeColor="textSecondary">
-                    {member.position} · {member.permission}
-                  </ThemedText>
+                <View style={styles.cardTopRow}>
+                  <MemberAvatar uri={member.photoUrl} nameKo={member.nameKo} size={48} />
+                  <View style={styles.cardHeader}>
+                    <ThemedText type="smallBold">
+                      {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
+                    </ThemedText>
+                    <ThemedText type="code" themeColor="textSecondary">
+                      {member.position} · {member.permission}
+                    </ThemedText>
+                  </View>
                 </View>
 
                 <ThemedText type="small" themeColor="textSecondary">
@@ -306,6 +368,24 @@ export default function MembersScreen() {
 
               {editDraft && (
                 <>
+                  <View style={styles.photoRow}>
+                    <MemberAvatar
+                      uri={photoPreviewUri ?? editDraft.photoUrl}
+                      nameKo={editDraft.nameKo}
+                      size={88}
+                    />
+                    <Pressable
+                      disabled={photoUploading}
+                      onPress={pickAndUploadPhoto}
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        { borderColor: theme.border },
+                        pressed && styles.pressed,
+                      ]}>
+                      <ThemedText type="small">{photoUploading ? '업로드 중...' : '사진 변경'}</ThemedText>
+                    </Pressable>
+                  </View>
+
                   <TextInput
                     value={editDraft.nameKo}
                     onChangeText={(text) => setEditDraft({ ...editDraft, nameKo: text })}
@@ -548,10 +628,19 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: 4,
   },
-  cardHeader: {
+  cardTopRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Spacing.two,
+  },
+  cardHeader: {
+    flex: 1,
+    gap: 2,
+  },
+  photoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
   },
   historyBlock: {
     gap: 2,

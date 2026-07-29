@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { MemberAvatar } from '@/components/member-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, BorderRadius, FontSize, Spacing } from '@/constants/theme';
@@ -57,6 +58,15 @@ export function AttendancePanel() {
   const [reasonDraft, setReasonDraft] = useState('');
   const absencePrefillRequest = useRef(0);
   const reasonInputRef = useRef<TextInput>(null);
+
+  // Drives the left/right scroll-hint arrows below — lets users know the
+  // attendance table scrolls horizontally, and hides each arrow once
+  // they've scrolled that direction as far as it goes.
+  const [tableScrollX, setTableScrollX] = useState(0);
+  const [tableContentWidth, setTableContentWidth] = useState(0);
+  const [tableViewportWidth, setTableViewportWidth] = useState(0);
+  const canScrollTableLeft = tableScrollX > 2;
+  const canScrollTableRight = tableContentWidth - tableViewportWidth - tableScrollX > 2;
 
   const focusReasonInput = () => {
     // Modal animation / mobile browsers need a short delay before focus opens the keyboard.
@@ -183,35 +193,55 @@ export function AttendancePanel() {
         </Pressable>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tableScroll}>
-        <View style={styles.table}>
-          <View style={styles.tableRow}>
-            <View style={styles.nameHeaderCell}>
-              <ThemedText type="smallBold" style={styles.headerText}>
-                성도
-              </ThemedText>
-            </View>
-            {sundays.map((date) => (
-              <View key={date.toISOString()} style={styles.dateHeaderCell}>
+      <View style={styles.tableWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator
+          style={styles.tableScroll}
+          onLayout={(event) => setTableViewportWidth(event.nativeEvent.layout.width)}
+          onContentSizeChange={(width) => setTableContentWidth(width)}
+          onScroll={(event) => setTableScrollX(event.nativeEvent.contentOffset.x)}
+          scrollEventThrottle={16}>
+          <View style={styles.table}>
+            <View style={styles.tableRow}>
+              <View style={styles.nameHeaderCell}>
                 <ThemedText type="smallBold" style={styles.headerText}>
-                  {formatAttendanceDate(date)}
-                </ThemedText>
-                <ThemedText type="code" themeColor="textSecondary" style={styles.sundayLabel}>
-                  주일
+                  성도
                 </ThemedText>
               </View>
-            ))}
-          </View>
+              {sundays.map((date) => (
+                <View key={date.toISOString()} style={styles.dateHeaderCell}>
+                  <ThemedText type="smallBold" style={styles.headerText}>
+                    {formatAttendanceDate(date)}
+                  </ThemedText>
+                  <ThemedText type="code" themeColor="textSecondary" style={styles.sundayLabel}>
+                    주일
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
 
-          {cellGroupMembers.map((member) => (
+            {cellGroupMembers.map((member) => (
             <View key={member.id} style={styles.tableRow}>
               <View style={styles.nameCell}>
-                <ThemedText type="smallBold" style={styles.memberName}>
-                  {member.nameKo}
-                </ThemedText>
-                <ThemedText type="code" themeColor="textSecondary" style={styles.memberRole}>
-                  {member.position}
-                </ThemedText>
+                <MemberAvatar
+                  uri={member.photoUrl}
+                  nameKo={member.nameKo}
+                  size={28}
+                  style={styles.nameCellAvatar}
+                />
+                <View style={styles.nameTextColumn}>
+                  <ThemedText type="smallBold" style={styles.memberName} numberOfLines={1}>
+                    {member.nameKo}
+                  </ThemedText>
+                  <ThemedText
+                    type="code"
+                    themeColor="textSecondary"
+                    style={styles.memberRole}
+                    numberOfLines={1}>
+                    {member.position}
+                  </ThemedText>
+                </View>
               </View>
 
               {sundays.map((date) => {
@@ -250,9 +280,25 @@ export function AttendancePanel() {
                 );
               })}
             </View>
-          ))}
-        </View>
-      </ScrollView>
+            ))}
+          </View>
+        </ScrollView>
+
+        {canScrollTableLeft && (
+          <View pointerEvents="none" style={[styles.tableScrollHint, styles.tableScrollHintLeft]}>
+            <ThemedText type="smallBold" style={styles.tableScrollHintArrow}>
+              ‹
+            </ThemedText>
+          </View>
+        )}
+        {canScrollTableRight && (
+          <View pointerEvents="none" style={[styles.tableScrollHint, styles.tableScrollHintRight]}>
+            <ThemedText type="smallBold" style={styles.tableScrollHintArrow}>
+              ›
+            </ThemedText>
+          </View>
+        )}
+      </View>
 
       <ThemedText type="code" themeColor="textSecondary" style={styles.demoNote}>
         클릭으로 출석 체크 · 길게 눌러 결석 사유 입력
@@ -361,8 +407,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  tableWrapper: {
+    alignSelf: 'stretch',
+  },
   tableScroll: {
     alignSelf: 'stretch',
+  },
+  tableScrollHint: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -9,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  tableScrollHintArrow: {
+    fontSize: FontSize.micro,
+    color: '#FFFFFF',
+  },
+  tableScrollHintLeft: {
+    left: 0,
+  },
+  tableScrollHintRight: {
+    right: 0,
   },
   table: {
     gap: Spacing.one,
@@ -393,6 +463,15 @@ const styles = StyleSheet.create({
   nameCell: {
     width: 88,
     paddingVertical: Spacing.one,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  nameCellAvatar: {
+    marginRight: 5,
+  },
+  nameTextColumn: {
+    flexShrink: 1,
     gap: 2,
   },
   memberName: {
