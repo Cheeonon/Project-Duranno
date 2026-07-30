@@ -6,10 +6,11 @@ export default function AppLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'fade',
+        // Web: skip stack animation — list screens feel snappier without a fade.
+        animation: Platform.OS === 'web' ? 'none' : 'fade',
         gestureEnabled: true,
         fullScreenGestureEnabled: true,
-        animationDuration: Platform.OS === 'android' ? 200 : 200,
+        animationDuration: 160,
       }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="members" />

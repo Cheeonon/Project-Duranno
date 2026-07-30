@@ -1,18 +1,25 @@
-import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import {
+  FlatList,
+  InteractionManager,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MemberAvatar } from '@/components/member-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { StackScreenEnter } from '@/components/stack-screen-enter';
 import { BorderRadius, BottomTabInset, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
-import { formatMemberDob, searchChurchMembers } from '@/lib/member-search';
+import { formatMemberDob, getManAge, searchChurchMembers } from '@/lib/member-search';
 import { formatCellHistoryPeriod } from '@/lib/cell-history';
 import { deleteMemberPhoto, uploadMemberPhoto } from '@/lib/member-photos';
 import { supabase } from '@/lib/supabase';
@@ -93,9 +100,10 @@ export default function MembersScreen() {
   }, []);
 
   useEffect(() => {
-    // Also re-invoked after issuing an account, not just on mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadAccounts();
+    const task = InteractionManager.runAfterInteractions(() => {
+      void loadAccounts();
+    });
+    return () => task.cancel();
   }, [loadAccounts]);
 
   const results = useMemo(() => searchChurchMembers(query, members), [query, members]);
@@ -137,6 +145,7 @@ export default function MembersScreen() {
       return;
     }
 
+    const ImagePicker = await import('expo-image-picker');
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       setEditError('사진 보관함 접근 권한이 필요합니다.');
@@ -253,23 +262,98 @@ export default function MembersScreen() {
     refresh();
   };
 
+  const renderMemberCard = useCallback(
+    ({ item: member }: { item: Member }) => {
+      const editable = canEditMember(profile?.permission, myEffectiveLeaderId, member);
+      const hasAccount = accountMemberIds.has(member.id);
+      const manAge = getManAge(member.dob);
+
+      return (
+        <ThemedView type="backgroundElement" style={styles.card}>
+          <View style={styles.cardTopRow}>
+            <MemberAvatar uri={member.photoUrl} nameKo={member.nameKo} size={48} />
+            <View style={styles.cardHeader}>
+              <ThemedText type="smallBold">
+                {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
+              </ThemedText>
+              <ThemedText type="code" themeColor="textSecondary">
+                {member.position} · {member.permission}
+              </ThemedText>
+            </View>
+          </View>
+
+          <ThemedText type="small" themeColor="textSecondary">
+            생년월일 · {formatMemberDob(member.dob)}
+            {manAge != null ? ` · 만 ${manAge}세` : ''}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            전화번호 · {member.phone || '-'}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            셀그룹 · {member.cellGroup}
+          </ThemedText>
+          <PreviousCellHistory history={member.previousCellGroups} />
+          <ThemedText type="small" themeColor="textSecondary">
+            주소 · {member.address || '-'}
+          </ThemedText>
+
+          <View style={styles.cardActions}>
+            {editable && (
+              <Pressable
+                onPress={() => openEdit(member)}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  { borderColor: theme.border },
+                  pressed && styles.pressed,
+                ]}>
+                <ThemedText type="small">수정</ThemedText>
+              </Pressable>
+            )}
+
+            {isAdmin && (
+              <Pressable
+                disabled={hasAccount}
+                onPress={() => openIssue(member)}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  { borderColor: theme.border },
+                  hasAccount && styles.actionButtonDisabled,
+                  pressed && styles.pressed,
+                ]}>
+                <ThemedText type="small" themeColor={hasAccount ? 'textSecondary' : 'text'}>
+                  {hasAccount ? '계정 있음' : '계정 발급'}
+                </ThemedText>
+              </Pressable>
+            )}
+          </View>
+        </ThemedView>
+      );
+    },
+    [
+      accountMemberIds,
+      isAdmin,
+      myEffectiveLeaderId,
+      profile?.permission,
+      theme.border,
+    ],
+  );
+
   return (
-    <StackScreenEnter>
-      <ThemedView style={styles.screen}>
-        <SafeAreaView style={styles.safeArea}>
-          <Pressable
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/');
-              }
-            }}
-            style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}>
-            <ThemedText type="small" themeColor="textSecondary">
-              ‹ 홈
-            </ThemedText>
-          </Pressable>
+    <ThemedView style={styles.screen}>
+      <SafeAreaView style={styles.safeArea}>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/');
+            }
+          }}
+          style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}>
+          <ThemedText type="small" themeColor="textSecondary">
+            ‹ 홈
+          </ThemedText>
+        </Pressable>
 
         <ThemedText type="subtitle" style={styles.title}>
           성도관리
@@ -290,72 +374,18 @@ export default function MembersScreen() {
           {isLoading ? '불러오는 중...' : error ? error : `${results.length}명`}
         </ThemedText>
 
-        <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-          {results.map((member) => {
-            const editable = canEditMember(profile?.permission, myEffectiveLeaderId, member);
-            const hasAccount = accountMemberIds.has(member.id);
-
-            return (
-              <ThemedView key={member.id} type="backgroundElement" style={styles.card}>
-                <View style={styles.cardTopRow}>
-                  <MemberAvatar uri={member.photoUrl} nameKo={member.nameKo} size={48} />
-                  <View style={styles.cardHeader}>
-                    <ThemedText type="smallBold">
-                      {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
-                    </ThemedText>
-                    <ThemedText type="code" themeColor="textSecondary">
-                      {member.position} · {member.permission}
-                    </ThemedText>
-                  </View>
-                </View>
-
-                <ThemedText type="small" themeColor="textSecondary">
-                  생년월일 · {formatMemberDob(member.dob)}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  전화번호 · {member.phone || '-'}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  셀그룹 · {member.cellGroup}
-                </ThemedText>
-                <PreviousCellHistory history={member.previousCellGroups} />
-                <ThemedText type="small" themeColor="textSecondary">
-                  주소 · {member.address || '-'}
-                </ThemedText>
-
-                <View style={styles.cardActions}>
-                  {editable && (
-                    <Pressable
-                      onPress={() => openEdit(member)}
-                      style={({ pressed }) => [
-                        styles.actionButton,
-                        { borderColor: theme.border },
-                        pressed && styles.pressed,
-                      ]}>
-                      <ThemedText type="small">수정</ThemedText>
-                    </Pressable>
-                  )}
-
-                  {isAdmin && (
-                    <Pressable
-                      disabled={hasAccount}
-                      onPress={() => openIssue(member)}
-                      style={({ pressed }) => [
-                        styles.actionButton,
-                        { borderColor: theme.border },
-                        hasAccount && styles.actionButtonDisabled,
-                        pressed && styles.pressed,
-                      ]}>
-                      <ThemedText type="small" themeColor={hasAccount ? 'textSecondary' : 'text'}>
-                        {hasAccount ? '계정 있음' : '계정 발급'}
-                      </ThemedText>
-                    </Pressable>
-                  )}
-                </View>
-              </ThemedView>
-            );
-          })}
-        </ScrollView>
+        <FlatList
+          style={styles.listFlex}
+          data={results}
+          keyExtractor={(member) => member.id}
+          renderItem={renderMemberCard}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
+        />
       </SafeAreaView>
 
       <Modal visible={editingMember !== null} transparent animationType="fade" onRequestClose={closeEdit}>
@@ -587,7 +617,6 @@ export default function MembersScreen() {
         </Pressable>
       </Modal>
       </ThemedView>
-    </StackScreenEnter>
   );
 }
 
@@ -618,6 +647,9 @@ const styles = StyleSheet.create({
   },
   resultCount: {
     fontSize: FontSize.caption,
+  },
+  listFlex: {
+    flex: 1,
   },
   list: {
     gap: Spacing.two,

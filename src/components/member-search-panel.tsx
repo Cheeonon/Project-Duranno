@@ -8,7 +8,7 @@ import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
-import { formatMemberDob, searchChurchMembers } from '@/lib/member-search';
+import { formatMemberDob, getManAge, searchChurchMembers } from '@/lib/member-search';
 
 const RESULTS_MAX_HEIGHT = 320;
 
@@ -75,7 +75,10 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         {results.length > 0 ? (
-          results.map((member) => (
+          results.map((member) => {
+            const manAge = getManAge(member.dob);
+
+            return (
             <ThemedView key={member.id} type="background" style={[styles.resultCard, { borderColor: theme.border }]}>
               <View style={styles.resultHeader}>
                 <View style={styles.resultNameRow}>
@@ -92,6 +95,7 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
               <View style={styles.resultDetails}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.detailText}>
                   생년월일 · {formatMemberDob(member.dob)}
+                  {manAge != null ? ` · 만 ${manAge}세` : ''}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.detailText}>
                   전화번호 · {member.phone}
@@ -104,7 +108,8 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
                 </ThemedText>
               </View>
             </ThemedView>
-          ))
+            );
+          })
         ) : (
           <ThemedView type="background" style={styles.emptyState}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>

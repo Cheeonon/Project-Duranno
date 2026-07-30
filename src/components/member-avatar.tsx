@@ -45,6 +45,8 @@ export function MemberAvatar({ uri, nameKo, size, style }: MemberAvatarProps) {
 const styles = StyleSheet.create({
   circle: {
     overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#000000',
   },
   fallback: {
     alignItems: 'center',

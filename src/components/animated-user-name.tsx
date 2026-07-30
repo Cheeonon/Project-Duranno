@@ -9,18 +9,20 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { FontSize } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Accent, FontSize } from '@/constants/theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 
 type AnimatedUserNameProps = {
   name: string;
+  /** Matches the surrounding greeting size when provided. */
+  fontSize?: number;
 };
 
-export function AnimatedUserName({ name }: AnimatedUserNameProps) {
-  const theme = useTheme();
+export function AnimatedUserName({ name, fontSize }: AnimatedUserNameProps) {
   const { scaled } = useHomeTextScale();
   const scale = useSharedValue(1);
+  const size = fontSize ?? FontSize.hero;
+  const resolvedSize = scaled(Math.round(size * 1.08));
 
   const playScale = useCallback(() => {
     scale.value = 1;
@@ -45,9 +47,9 @@ export function AnimatedUserName({ name }: AnimatedUserNameProps) {
       style={[
         styles.name,
         {
-          color: theme.text,
-          fontSize: scaled(FontSize.hero),
-          lineHeight: scaled(32),
+          color: Accent.greenMuted,
+          fontSize: resolvedSize,
+          lineHeight: Math.round(resolvedSize * 1.36),
         },
         animatedStyle,
       ]}>
@@ -58,7 +60,7 @@ export function AnimatedUserName({ name }: AnimatedUserNameProps) {
 
 const styles = StyleSheet.create({
   name: {
-    fontWeight: '700',
+    fontWeight: '800',
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
 });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -8,6 +8,7 @@ import {
   CalendarEventFormModal,
   type CalendarEventFormValue,
 } from '@/components/calendar-event-form-modal';
+import { PullToRefreshScrollView } from '@/components/pull-to-refresh-scroll-view';
 import { TabScreenSlide } from '@/components/tab-screen-slide';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -31,14 +32,26 @@ function toISODate(date: Date) {
 
 export default function CalendarScreen() {
   const safeAreaInsets = useSafeAreaInsets();
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const { events, refresh } = useCalendarEvents();
   const [selectedFilters, setSelectedFilters] = useState<CalendarFilterCategory[]>([
     'birthdays',
     'events',
   ]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const bottomInset = safeAreaInsets.bottom + BottomTabInset + Spacing.two;
   const theme = useTheme();
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshProfile(), refresh()]);
+      setRefreshKey((current) => current + 1);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh, refreshProfile]);
 
   const canManageEvents =
     profile?.permission === '임원' || profile?.permission === '관리자' || profile?.permission === '사역자';
@@ -122,43 +135,53 @@ export default function CalendarScreen() {
       <View
         style={[
           styles.screen,
-          { backgroundColor: theme.background, paddingTop: safeAreaInsets.top, paddingBottom: bottomInset },
+          { backgroundColor: theme.background, paddingTop: safeAreaInsets.top },
         ]}>
-        <ThemedView style={styles.container}>
-          <ThemedView style={styles.titleContainer}>
-            <View style={styles.titleRow}>
-              <ThemedText type="subtitle">달력</ThemedText>
-              {canManageEvents && (
-                <Pressable
-                  accessibilityLabel="일정 추가"
-                  onPress={() => openAddEvent(new Date())}
-                  style={({ pressed }) => [
-                    styles.addButton,
-                    { borderColor: theme.border },
-                    pressed && styles.pressed,
-                  ]}>
-                  <ThemedText type="smallBold">+ 일정 추가</ThemedText>
-                </Pressable>
-              )}
-            </View>
-            <ThemedText style={styles.centerText} themeColor="textSecondary">
-              교회 일정과 출결을 확인할 수 있는 달력입니다.
-            </ThemedText>
-          </ThemedView>
+        <PullToRefreshScrollView
+          style={styles.scrollView}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset }]}
+          showsVerticalScrollIndicator={false}
+          alwaysBounceVertical
+          keyboardShouldPersistTaps="handled">
+          <ThemedView style={styles.container}>
+            <ThemedView style={styles.titleContainer}>
+              <View style={styles.titleRow}>
+                <ThemedText type="subtitle">달력</ThemedText>
+                {canManageEvents && (
+                  <Pressable
+                    accessibilityLabel="일정 추가"
+                    onPress={() => openAddEvent(new Date())}
+                    style={({ pressed }) => [
+                      styles.addButton,
+                      { borderColor: theme.border },
+                      pressed && styles.pressed,
+                    ]}>
+                    <ThemedText type="smallBold">+ 일정 추가</ThemedText>
+                  </Pressable>
+                )}
+              </View>
+              <ThemedText style={styles.centerText} themeColor="textSecondary">
+                교회 일정과 출결을 확인할 수 있는 달력입니다.
+              </ThemedText>
+            </ThemedView>
 
-          <View style={styles.calendarSection}>
-            <View style={styles.calendarWrapper}>
-              <Calendar
-                events={events}
-                activeFilters={selectedFilters}
-                onToggleFilter={toggleFilter}
-                canManageEvents={canManageEvents}
-                onAddEvent={openAddEvent}
-                onEditEvent={openEditEvent}
-              />
+            <View style={styles.calendarSection}>
+              <View style={styles.calendarWrapper}>
+                <Calendar
+                  key={`calendar-${refreshKey}`}
+                  events={events}
+                  activeFilters={selectedFilters}
+                  onToggleFilter={toggleFilter}
+                  canManageEvents={canManageEvents}
+                  onAddEvent={openAddEvent}
+                  onEditEvent={openEditEvent}
+                />
+              </View>
             </View>
-          </View>
-        </ThemedView>
+          </ThemedView>
+        </PullToRefreshScrollView>
       </View>
 
       <CalendarEventFormModal
@@ -179,11 +202,18 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  container: {
+  scrollView: {
     flex: 1,
-    alignSelf: 'stretch',
     width: '100%',
     maxWidth: MaxContentWidth,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  container: {
+    flexGrow: 1,
+    alignSelf: 'stretch',
+    width: '100%',
   },
   titleContainer: {
     gap: Spacing.one,
@@ -208,15 +238,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   calendarSection: {
-    flex: 1,
+    flexGrow: 1,
     flexDirection: 'column',
     alignItems: 'stretch',
     gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
     paddingBottom: Spacing.two,
   },
   calendarWrapper: {
-    flex: 1,
+    flexGrow: 1,
     alignSelf: 'stretch',
     width: '100%',
   },

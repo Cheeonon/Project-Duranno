@@ -84,12 +84,20 @@ export function AttendancePanel() {
     focusReasonInput();
   }, [absenceEditor]);
 
+  const now = new Date();
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+
   const goToPrevMonth = () => {
     setViewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
   };
 
   const goToNextMonth = () => {
     setViewDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
+  };
+
+  const goToCurrentMonth = () => {
+    const current = new Date();
+    setViewDate(new Date(current.getFullYear(), current.getMonth(), 1));
   };
 
   const toggleAttendance = (memberId: string, date: Date) => {
@@ -192,6 +200,21 @@ export function AttendancePanel() {
           <ThemedText type="smallBold">›</ThemedText>
         </Pressable>
       </View>
+
+      {!isCurrentMonth && (
+        <Pressable
+          accessibilityLabel="이번 달로 돌아가기"
+          onPress={goToCurrentMonth}
+          style={({ pressed }) => [
+            styles.backToMonthButton,
+            { borderColor: theme.border, backgroundColor: isDark ? '#2F4036' : '#DCFCE7' },
+            pressed && styles.pressed,
+          ]}>
+          <ThemedText type="smallBold" style={styles.backToMonthLabel}>
+            이번 달로 돌아가기
+          </ThemedText>
+        </Pressable>
+      )}
 
       <View style={styles.tableWrapper}>
         <ScrollView
@@ -406,6 +429,18 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  backToMonthButton: {
+    alignSelf: 'center',
+    borderRadius: BorderRadius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+  },
+  backToMonthLabel: {
+    color: Accent.green,
+    fontSize: FontSize.caption,
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   tableWrapper: {
     alignSelf: 'stretch',

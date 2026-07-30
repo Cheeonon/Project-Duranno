@@ -136,11 +136,18 @@ export function useMembers() {
       };
     });
 
+    // Paint the list immediately — signed photo URLs can arrive a moment later.
+    setState({ members: withHistory, isLoading: false, error: null });
+
     const photoPaths = withHistory
       .map((member) => member.photoPath)
       .filter((path): path is string => Boolean(path));
-    const photoUrlByPath = await signMemberPhotoUrls(photoPaths);
 
+    if (photoPaths.length === 0) {
+      return;
+    }
+
+    const photoUrlByPath = await signMemberPhotoUrls(photoPaths);
     const withPhotos = withHistory.map((member) => ({
       ...member,
       photoUrl: member.photoPath ? (photoUrlByPath.get(member.photoPath) ?? null) : null,
