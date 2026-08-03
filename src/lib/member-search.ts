@@ -72,11 +72,16 @@ export function searchChurchMembers(query: string, members: Member[]) {
   return members.filter((member) => {
     const fields = [
       member.nameKo,
-      member.nameEn,
+      member.firstNameEn,
+      member.lastNameEn,
       member.dob,
       member.phone,
       member.cellGroup,
-      member.address,
+      member.addressStreet,
+      member.addressUnit,
+      member.addressCity,
+      member.addressProvince,
+      member.addressPostalCode,
     ].map(normalizeSearchValue);
 
     return fields.some((field) => field.includes(normalizedQuery));

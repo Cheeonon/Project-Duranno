@@ -52,7 +52,7 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { isLoading, session } = useAuth();
+  const { isLoading, canAccessApp } = useAuth();
 
   if (isLoading) {
     return null;
@@ -62,10 +62,10 @@ function RootNavigator() {
     <>
       <AnimatedSplashOverlay />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={!session}>
+        <Stack.Protected guard={!canAccessApp}>
           <Stack.Screen name="login" />
         </Stack.Protected>
-        <Stack.Protected guard={!!session}>
+        <Stack.Protected guard={canAccessApp}>
           <Stack.Screen name="(app)" />
         </Stack.Protected>
       </Stack>

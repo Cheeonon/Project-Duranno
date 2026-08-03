@@ -8,6 +8,8 @@ import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
+import { formatMemberAddress } from '@/lib/member-address';
+import { formatMemberNameEn } from '@/lib/member-name';
 import { formatMemberDob, getManAge, searchChurchMembers } from '@/lib/member-search';
 
 const RESULTS_MAX_HEIGHT = 320;
@@ -84,7 +86,10 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
                 <View style={styles.resultNameRow}>
                   <MemberAvatar uri={member.photoUrl} nameKo={member.nameKo} size={44} />
                   <ThemedText type="smallBold" style={styles.memberName}>
-                    {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
+                    {member.nameKo}{' '}
+                    <ThemedText type="code" themeColor="textSecondary">
+                      {formatMemberNameEn(member)}
+                    </ThemedText>
                   </ThemedText>
                 </View>
                 <ThemedText type="code" themeColor="textSecondary" style={styles.memberRole}>
@@ -104,7 +109,7 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
                   셀그룹 · {member.cellGroup}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.detailText}>
-                  주소 · {member.address}
+                  주소 · {formatMemberAddress(member) || '-'}
                 </ThemedText>
               </View>
             </ThemedView>

@@ -1,9 +1,12 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Calendar } from '@/components/calendar';
-import { type CalendarFilterCategory } from '@/components/calendar-filter';
+import {
+  DEFAULT_CALENDAR_FILTERS,
+  type CalendarFilterCategory,
+} from '@/components/calendar-filter';
 import {
   CalendarEventFormModal,
   type CalendarEventFormValue,
@@ -15,10 +18,12 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
+import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
 import {
   createCalendarEvent,
   deleteCalendarEvent,
+  mergeCalendarEvents,
   updateCalendarEvent,
   type CalendarEventRecord,
 } from '@/lib/calendar-events';
@@ -34,27 +39,31 @@ export default function CalendarScreen() {
   const safeAreaInsets = useSafeAreaInsets();
   const { profile, refreshProfile } = useAuth();
   const { events, refresh } = useCalendarEvents();
-  const [selectedFilters, setSelectedFilters] = useState<CalendarFilterCategory[]>([
-    'birthdays',
-    'events',
-  ]);
+  const { members, refresh: refreshMembers } = useMembers();
+  const [selectedFilters, setSelectedFilters] =
+    useState<CalendarFilterCategory[]>(DEFAULT_CALENDAR_FILTERS);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const bottomInset = safeAreaInsets.bottom + BottomTabInset + Spacing.two;
   const theme = useTheme();
 
+  const displayEvents = useMemo(
+    () => mergeCalendarEvents(events, members),
+    [events, members],
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refreshProfile(), refresh()]);
+      await Promise.all([refreshProfile(), refresh(), refreshMembers()]);
       setRefreshKey((current) => current + 1);
     } finally {
       setRefreshing(false);
     }
-  }, [refresh, refreshProfile]);
+  }, [refresh, refreshMembers, refreshProfile]);
 
   const canManageEvents =
-    profile?.permission === '임원' || profile?.permission === '관리자' || profile?.permission === '사역자';
+    profile?.permission === '관리자' || profile?.permission === '사역자';
 
   const [formVisible, setFormVisible] = useState(false);
   const [formInitial, setFormInitial] = useState<CalendarEventFormValue | null>(null);
@@ -74,11 +83,15 @@ export default function CalendarScreen() {
   };
 
   const openEditEvent = (event: CalendarEventRecord) => {
+    if (event.readOnly || event.category !== 'events') {
+      return;
+    }
+
     setFormInitial({
       id: event.id,
       title: event.title,
       detail: event.detail,
-      category: event.category,
+      category: 'events',
       eventDate: event.eventDate,
       recursAnnually: event.recursAnnually,
     });
@@ -171,7 +184,7 @@ export default function CalendarScreen() {
               <View style={styles.calendarWrapper}>
                 <Calendar
                   key={`calendar-${refreshKey}`}
-                  events={events}
+                  events={displayEvents}
                   activeFilters={selectedFilters}
                   onToggleFilter={toggleFilter}
                   canManageEvents={canManageEvents}

@@ -4,13 +4,19 @@ import { Pressable, StyleSheet, View, type ScrollView } from 'react-native';
 import {
   CALENDAR_FILTER_OPTIONS,
   CalendarFilterSection,
+  DEFAULT_CALENDAR_FILTERS,
   type CalendarFilterCategory,
 } from '@/components/calendar-filter';
 import { CollapsiblePanel } from '@/components/collapsible-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
-import { getUpcomingEvents, type UpcomingEvent } from '@/lib/calendar-events';
+import { useMembers } from '@/hooks/use-members';
+import {
+  getUpcomingEvents,
+  mergeCalendarEvents,
+  type UpcomingEvent,
+} from '@/lib/calendar-events';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -42,15 +48,19 @@ export function UpcomingEventsSection({
   const theme = useTheme();
   const headerRef = useRef<View>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedFilters, setSelectedFilters] = useState<CalendarFilterCategory[]>([
-    'birthdays',
-    'events',
-  ]);
+  const [selectedFilters, setSelectedFilters] =
+    useState<CalendarFilterCategory[]>(DEFAULT_CALENDAR_FILTERS);
   const { events } = useCalendarEvents();
+  const { members } = useMembers();
+
+  const displayEvents = useMemo(
+    () => mergeCalendarEvents(events, members),
+    [events, members],
+  );
 
   const upcomingEvents = useMemo(
-    () => getUpcomingEvents(events, new Date(), selectedFilters),
-    [events, selectedFilters],
+    () => getUpcomingEvents(displayEvents, new Date(), selectedFilters),
+    [displayEvents, selectedFilters],
   );
   const nextEvent = upcomingEvents[0];
 

@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { CALENDAR_FILTER_OPTIONS, type CalendarFilterCategory } from '@/components/calendar-filter';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type { CalendarStoredCategory } from '@/lib/calendar-events';
+
+/** Manual calendar rows (birthdays come from the members roster). */
+const FORM_CATEGORY_OPTIONS: { id: CalendarStoredCategory; label: string }[] = [
+  { id: 'events', label: '교회 행사' },
+];
 
 export type CalendarEventFormValue = {
   id?: string;
   title: string;
   detail: string;
-  category: CalendarFilterCategory;
+  category: CalendarStoredCategory;
   eventDate: string;
   recursAnnually: boolean;
 };
@@ -95,7 +100,7 @@ export function CalendarEventFormModal({
               분류
             </ThemedText>
             <View style={styles.chipRow}>
-              {CALENDAR_FILTER_OPTIONS.map((option) => (
+              {FORM_CATEGORY_OPTIONS.map((option) => (
                 <Pressable key={option.id} onPress={() => setDraft({ ...draft, category: option.id })}>
                   <ThemedView
                     type={draft.category === option.id ? 'backgroundSelected' : 'background'}

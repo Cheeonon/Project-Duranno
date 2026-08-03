@@ -1,5 +1,9 @@
 import type { CalendarFilterCategory } from '@/components/calendar-filter';
 import { supabase } from '@/lib/supabase';
+import type { Member } from '@/types/member';
+
+/** Values persisted in `calendar_events.category` (Postgres enum). */
+export type CalendarStoredCategory = 'birthdays' | 'events';
 
 export type CalendarEventRecord = {
   id: string;
@@ -8,6 +12,8 @@ export type CalendarEventRecord = {
   category: CalendarFilterCategory;
   eventDate: string; // ISO date (YYYY-MM-DD), the stored anchor date
   recursAnnually: boolean;
+  /** Member-derived birthdays are not editable as calendar rows. */
+  readOnly?: boolean;
 };
 
 export type UpcomingEvent = CalendarEventRecord & {
@@ -18,7 +24,7 @@ export type UpcomingEvent = CalendarEventRecord & {
 export type CalendarEventInput = {
   title: string;
   detail: string;
-  category: CalendarFilterCategory;
+  category: CalendarStoredCategory;
   eventDate: string;
   recursAnnually: boolean;
 };
@@ -27,20 +33,54 @@ export type CalendarEventRow = {
   id: string;
   title: string;
   detail: string | null;
-  category: CalendarFilterCategory;
+  category: CalendarStoredCategory;
   event_date: string;
   recurs_annually: boolean;
 };
 
-export function mapCalendarEventRow(row: CalendarEventRow): CalendarEventRecord {
+const MEMBER_BIRTHDAY_PREFIX = 'bday:';
+
+export function isMemberBirthdayEvent(eventId: string) {
+  return eventId.startsWith(MEMBER_BIRTHDAY_PREFIX);
+}
+
+export function mapCalendarEventRow(row: CalendarEventRow): CalendarEventRecord | null {
+  // Birthdays come from members.ministry — skip stored birthday rows
+  // so they don't duplicate outside 청년부/장년부 filters.
+  if (row.category === 'birthdays') {
+    return null;
+  }
+
   return {
     id: row.id,
     title: row.title,
     detail: row.detail ?? '',
-    category: row.category,
+    category: 'events',
     eventDate: row.event_date,
     recursAnnually: row.recurs_annually,
   };
+}
+
+/** Build annually recurring birthday events from the members roster. */
+export function buildMemberBirthdayEvents(members: Member[]): CalendarEventRecord[] {
+  return members
+    .filter((member) => Boolean(member.dob))
+    .map((member) => ({
+      id: `${MEMBER_BIRTHDAY_PREFIX}${member.id}`,
+      title: `${member.nameKo} 생일`,
+      detail: `${member.ministry} · ${member.position}`,
+      category: member.ministry === '청년부' ? 'youthBirthdays' : 'adultBirthdays',
+      eventDate: member.dob,
+      recursAnnually: true,
+      readOnly: true,
+    }));
+}
+
+export function mergeCalendarEvents(
+  dbEvents: CalendarEventRecord[],
+  members: Member[],
+): CalendarEventRecord[] {
+  return [...dbEvents, ...buildMemberBirthdayEvents(members)];
 }
 
 function startOfDay(date: Date) {
@@ -112,7 +152,7 @@ export function getUpcomingEvents(
   activeFilters?: CalendarFilterCategory[],
 ): UpcomingEvent[] {
   const today = startOfDay(fromDate);
-  const filters = activeFilters ?? ['birthdays', 'events'];
+  const filters = activeFilters ?? ['youthBirthdays', 'adultBirthdays', 'events'];
 
   return events
     .filter((event) => filters.includes(event.category))
