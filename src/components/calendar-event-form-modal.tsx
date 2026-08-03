@@ -67,11 +67,16 @@ export function CalendarEventFormModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <View
-          style={[styles.modalCard, { backgroundColor: theme.background }]}
-          onStartShouldSetResponder={() => true}>
-          <ScrollView contentContainerStyle={styles.modalScrollContent}>
+      <View style={styles.modalOverlay}>
+        <Pressable
+          accessibilityLabel="일정 닫기"
+          onPress={onClose}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[styles.modalCard, { backgroundColor: theme.background }]}>
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            keyboardShouldPersistTaps="handled">
             <ThemedText type="smallBold">{isEditing ? '일정 수정' : '일정 추가'}</ThemedText>
 
             <TextInput
@@ -164,7 +169,7 @@ export function CalendarEventFormModal({
             </View>
           </ScrollView>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
