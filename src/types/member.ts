@@ -70,6 +70,10 @@ export type Member = {
   phone: string;
   cellLeaderId: string | null; // null = this member IS the 셀장 of their own cell
   cellGroup: string; // computed display label, "{리더 이름} 셀" — not stored, derived from cellLeaderId
+  /** members.introducer_id — 인도자; null if none */
+  introducerId: string | null;
+  /** Display name of introducer — derived join, not stored */
+  introducerName: string | null;
   previousCellGroups: CellGroupMembership[];
   /** Canadian address — street line (e.g. 123 Finch Ave W) */
   addressStreet: string;

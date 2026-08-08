@@ -20,7 +20,7 @@ type MembersState = {
 
 const SELECT_COLUMNS =
   'id, name_ko, first_name_en, last_name_en, dob, gender, phone, household_head_id, permission, position, ' +
-  'is_married, ministry, ' +
+  'is_married, ministry, introducer_id, introducer:members!introducer_id(name_ko), ' +
   'address_street, address_unit, address_city, address_province, address_postal_code, ' +
   'cell_leader_id, cell_leader:members!cell_leader_id(name_ko), photo_path';
 
@@ -42,6 +42,8 @@ type MemberRow = {
   gender: string;
   is_married: boolean;
   ministry: string;
+  introducer_id: string | null;
+  introducer: { name_ko: string } | { name_ko: string }[] | null;
   cell_leader_id: string | null;
   cell_leader: { name_ko: string } | { name_ko: string }[] | null;
   photo_path: string | null;
@@ -57,6 +59,7 @@ type HistoryRow = {
 
 function mapRow(row: MemberRow, previousCellGroups: CellGroupMembership[]): Member {
   const leader = Array.isArray(row.cell_leader) ? row.cell_leader[0] : row.cell_leader;
+  const introducer = Array.isArray(row.introducer) ? row.introducer[0] : row.introducer;
 
   return {
     id: row.id,
@@ -70,6 +73,8 @@ function mapRow(row: MemberRow, previousCellGroups: CellGroupMembership[]): Memb
     phone: row.phone ?? '',
     cellLeaderId: row.cell_leader_id,
     cellGroup: `${leader ? leader.name_ko : row.name_ko} 셀`,
+    introducerId: row.introducer_id,
+    introducerName: introducer?.name_ko ?? null,
     previousCellGroups,
     addressStreet: row.address_street ?? '',
     addressUnit: row.address_unit ?? '',

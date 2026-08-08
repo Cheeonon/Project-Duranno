@@ -69,6 +69,29 @@ function canEditMember(
   return false;
 }
 
+function isMemberEditDirty(draft: Member, baseline: Member) {
+  return (
+    draft.nameKo !== baseline.nameKo ||
+    draft.firstNameEn !== baseline.firstNameEn ||
+    draft.lastNameEn !== baseline.lastNameEn ||
+    draft.dob !== baseline.dob ||
+    draft.gender !== baseline.gender ||
+    draft.phone !== baseline.phone ||
+    draft.addressStreet !== baseline.addressStreet ||
+    draft.addressUnit !== baseline.addressUnit ||
+    draft.addressCity !== baseline.addressCity ||
+    draft.addressProvince !== baseline.addressProvince ||
+    draft.addressPostalCode !== baseline.addressPostalCode ||
+    draft.cellLeaderId !== baseline.cellLeaderId ||
+    draft.introducerId !== baseline.introducerId ||
+    draft.permission !== baseline.permission ||
+    draft.position !== baseline.position ||
+    draft.isMarried !== baseline.isMarried ||
+    draft.ministry !== baseline.ministry ||
+    draft.photoPath !== baseline.photoPath
+  );
+}
+
 function PreviousCellHistory({ history }: { history: CellGroupMembership[] }) {
   if (history.length === 0) {
     return null;
@@ -127,6 +150,7 @@ export default function MembersScreen() {
 
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [editDraft, setEditDraft] = useState<Member | null>(null);
+  const [editBaseline, setEditBaseline] = useState<Member | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -135,19 +159,45 @@ export default function MembersScreen() {
   const [uploadedPhotoThisSession, setUploadedPhotoThisSession] = useState<string | null>(null);
   const [photoPreviewUri, setPhotoPreviewUri] = useState<string | null>(null);
   const [provinceMenuOpen, setProvinceMenuOpen] = useState(false);
+  const [introducerQuery, setIntroducerQuery] = useState('');
+  const [leaveConfirmVisible, setLeaveConfirmVisible] = useState(false);
 
   const openEdit = (member: Member) => {
-    setEditingMember(member);
-    setEditDraft({
+    const draft: Member = {
       ...member,
       phone: formatPhoneNumber(member.phone),
       addressProvince: member.addressProvince || 'ON',
-    });
+    };
+    setEditingMember(member);
+    setEditDraft(draft);
+    setEditBaseline(draft);
     setEditError(null);
     setUploadedPhotoThisSession(null);
     setPhotoPreviewUri(null);
     setProvinceMenuOpen(false);
+    setIntroducerQuery(member.introducerName ?? '');
+    setLeaveConfirmVisible(false);
   };
+
+  const introducerSuggestions = useMemo(() => {
+    if (!editDraft) {
+      return [];
+    }
+    const q = introducerQuery.trim();
+    if (!q) {
+      return [];
+    }
+    return members
+      .filter((candidate) => candidate.id !== editDraft.id)
+      .filter((candidate) => candidate.nameKo.includes(q))
+      .slice(0, 12);
+  }, [editDraft, introducerQuery, members]);
+
+  const hasUnsavedEdits = Boolean(
+    editDraft &&
+      editBaseline &&
+      (uploadedPhotoThisSession || isMemberEditDirty(editDraft, editBaseline)),
+  );
 
   const closeEdit = () => {
     if (uploadedPhotoThisSession) {
@@ -155,10 +205,24 @@ export default function MembersScreen() {
     }
     setEditingMember(null);
     setEditDraft(null);
+    setEditBaseline(null);
     setEditError(null);
     setUploadedPhotoThisSession(null);
     setPhotoPreviewUri(null);
     setProvinceMenuOpen(false);
+    setIntroducerQuery('');
+    setLeaveConfirmVisible(false);
+  };
+
+  const requestCloseEdit = () => {
+    if (editSubmitting) {
+      return;
+    }
+    if (!hasUnsavedEdits) {
+      closeEdit();
+      return;
+    }
+    setLeaveConfirmVisible(true);
   };
 
   const pickAndUploadPhoto = async () => {
@@ -231,6 +295,7 @@ export default function MembersScreen() {
           ? formatPostalCode(editDraft.addressPostalCode)
           : null,
         cell_leader_id: editDraft.cellLeaderId,
+        introducer_id: editDraft.introducerId,
         permission: editDraft.permission,
         position: editDraft.position,
         is_married: editDraft.isMarried,
@@ -392,6 +457,9 @@ export default function MembersScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             셀그룹 · {member.cellGroup}
           </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            인도자 · {member.introducerName || '-'}
+          </ThemedText>
           <PreviousCellHistory history={member.previousCellGroups} />
           {addressLines.length === 0 ? (
             <ThemedText type="small" themeColor="textSecondary">
@@ -539,11 +607,15 @@ export default function MembersScreen() {
         />
       </SafeAreaView>
 
-      <Modal visible={editingMember !== null} transparent animationType="fade" onRequestClose={closeEdit}>
+      <Modal
+        visible={editingMember !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={requestCloseEdit}>
         <View style={styles.modalOverlay}>
           <Pressable
             accessibilityLabel="수정 닫기"
-            onPress={closeEdit}
+            onPress={requestCloseEdit}
             style={StyleSheet.absoluteFill}
           />
           <View style={[styles.modalCard, { backgroundColor: theme.background }]}>
@@ -732,6 +804,97 @@ export default function MembersScreen() {
                   </View>
 
                   <ThemedText type="small" themeColor="textSecondary">
+                    인도자
+                  </ThemedText>
+                  <View style={styles.dropdownWrap}>
+                    <View style={styles.introducerInputRow}>
+                      <TextInput
+                        value={introducerQuery}
+                        onChangeText={(text) => {
+                          setIntroducerQuery(text);
+                          const selectedName = editDraft.introducerName ?? '';
+                          if (!text.trim() || (editDraft.introducerId && text.trim() !== selectedName)) {
+                            setEditDraft({
+                              ...editDraft,
+                              introducerId: null,
+                              introducerName: null,
+                            });
+                          }
+                        }}
+                        placeholder="이름 입력 후 선택"
+                        placeholderTextColor={theme.textSecondary}
+                        style={[
+                          styles.input,
+                          styles.introducerInput,
+                          { color: theme.text, backgroundColor: theme.backgroundElement },
+                        ]}
+                      />
+                      {editDraft.introducerId || introducerQuery ? (
+                        <Pressable
+                          accessibilityLabel="인도자 지우기"
+                          onPress={() => {
+                            setIntroducerQuery('');
+                            setEditDraft({
+                              ...editDraft,
+                              introducerId: null,
+                              introducerName: null,
+                            });
+                          }}
+                          style={({ pressed }) => [
+                            styles.introducerClear,
+                            { borderColor: theme.border },
+                            pressed && styles.pressed,
+                          ]}>
+                          <ThemedText type="small" themeColor="textSecondary">
+                            지우기
+                          </ThemedText>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                    {introducerQuery.trim().length > 0 && !editDraft.introducerId ? (
+                      <ThemedView
+                        type="background"
+                        style={[styles.dropdownMenu, { borderColor: theme.border }]}>
+                        {introducerSuggestions.length > 0 ? (
+                          <ScrollView style={styles.dropdownScroll} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                            {introducerSuggestions.map((candidate) => (
+                              <Pressable
+                                key={candidate.id}
+                                onPress={() => {
+                                  setEditDraft({
+                                    ...editDraft,
+                                    introducerId: candidate.id,
+                                    introducerName: candidate.nameKo,
+                                  });
+                                  setIntroducerQuery(candidate.nameKo);
+                                }}
+                                style={styles.dropdownItem}>
+                                <ThemedText type="small">
+                                  {candidate.nameKo}{' '}
+                                  <ThemedText type="code" themeColor="textSecondary">
+                                    · {candidate.position}
+                                  </ThemedText>
+                                </ThemedText>
+                              </Pressable>
+                            ))}
+                          </ScrollView>
+                        ) : (
+                          <View style={styles.dropdownItem}>
+                            <ThemedText type="small" themeColor="textSecondary">
+                              일치하는 성도가 없습니다
+                            </ThemedText>
+                          </View>
+                        )}
+                      </ThemedView>
+                    ) : null}
+                    {editDraft.introducerId ? (
+                      <ThemedText type="small" themeColor="textSecondary">
+                        선택됨 · {editDraft.introducerName}
+                      </ThemedText>
+                    ) : null}
+                  </View>
+
+                  <ThemedText type="small" themeColor="textSecondary">
                     성별
                   </ThemedText>
                   <View style={styles.chipRow}>
@@ -827,7 +990,7 @@ export default function MembersScreen() {
 
               <View style={styles.modalActions}>
                 <Pressable
-                  onPress={closeEdit}
+                  onPress={requestCloseEdit}
                   style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
                   <ThemedText type="small" themeColor="textSecondary">
                     취소
@@ -835,7 +998,7 @@ export default function MembersScreen() {
                 </Pressable>
                 <Pressable
                   disabled={editSubmitting}
-                  onPress={saveEdit}
+                  onPress={() => void saveEdit()}
                   style={({ pressed }) => [
                     styles.modalButton,
                     styles.modalButtonPrimary,
@@ -848,6 +1011,48 @@ export default function MembersScreen() {
               </View>
             </ScrollView>
           </View>
+
+          {leaveConfirmVisible ? (
+            <View style={styles.leaveConfirmOverlay}>
+              <ThemedView type="background" style={[styles.leaveConfirmCard, { borderColor: theme.border }]}>
+                <ThemedText type="smallBold">저장하시겠습니까?</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  변경된 내용이 있습니다. 저장하지 않으면 사라집니다.
+                </ThemedText>
+                <View style={styles.leaveConfirmActions}>
+                  <Pressable
+                    onPress={() => setLeaveConfirmVisible(false)}
+                    style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      계속 수정
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    onPress={closeEdit}
+                    style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
+                    <ThemedText type="small" style={styles.leaveDiscardLabel}>
+                      저장 안 함
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    disabled={editSubmitting}
+                    onPress={() => {
+                      setLeaveConfirmVisible(false);
+                      void saveEdit();
+                    }}
+                    style={({ pressed }) => [
+                      styles.modalButton,
+                      styles.modalButtonPrimary,
+                      pressed && styles.pressed,
+                    ]}>
+                    <ThemedText type="smallBold" style={{ color: '#FFFFFF' }}>
+                      저장
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </ThemedView>
+            </View>
+          ) : null}
         </View>
       </Modal>
 
@@ -1021,6 +1226,32 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: Spacing.two,
   },
+  leaveConfirmOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.four,
+    zIndex: 10,
+  },
+  leaveConfirmCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: BorderRadius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.three,
+    gap: Spacing.two,
+  },
+  leaveConfirmActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: Spacing.one,
+    marginTop: Spacing.one,
+  },
+  leaveDiscardLabel: {
+    color: '#E5484D',
+  },
   fieldError: {
     color: '#E5484D',
     fontSize: FontSize.micro,
@@ -1029,6 +1260,7 @@ const styles = StyleSheet.create({
   },
   dropdownWrap: {
     zIndex: 2,
+    gap: Spacing.one,
   },
   dropdownButton: {
     flexDirection: 'row',
@@ -1054,6 +1286,20 @@ const styles = StyleSheet.create({
   },
   dropdownItemSelected: {
     backgroundColor: 'rgba(34, 197, 94, 0.12)',
+  },
+  introducerInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  introducerInput: {
+    flex: 1,
+  },
+  introducerClear: {
+    borderRadius: BorderRadius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
   },
   modalButton: {
     borderRadius: BorderRadius.sm,
