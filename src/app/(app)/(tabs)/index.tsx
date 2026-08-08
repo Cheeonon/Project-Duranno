@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, type ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedIcon } from '@/components/animated-icon';
@@ -8,6 +8,7 @@ import { AnimatedUserName } from '@/components/animated-user-name';
 import { AttendancePanel } from '@/components/attendance-panel';
 import { MemberSearchPanel } from '@/components/member-search-panel';
 import { HintRow } from '@/components/hint-row';
+import { PullToRefreshScrollView } from '@/components/pull-to-refresh-scroll-view';
 import { TabScreenSlide } from '@/components/tab-screen-slide';
 import { ToggleHintRow } from '@/components/toggle-hint-row';
 import { UpcomingEventsSection } from '@/components/upcoming-events-section';
@@ -19,24 +20,22 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
 import { useTheme } from '@/hooks/use-theme';
 
-// The greeting is meant to wrap to exactly two lines by default. At the
-// fixed `hero` size that only holds on a standard phone column (~390px+) —
-// narrower phones need a smaller base size or the second line spills onto a
-// third. Scales linearly between those two widths.
-const GREETING_MIN_WIDTH = 340;
-const GREETING_MAX_WIDTH = 420;
-const GREETING_MIN_FONT_SIZE = 18;
+// At 100% text scale, the second greeting line must stay on one row inside
+// the phone column. Korean glyphs are ~1em wide; leave a small safety margin.
+const GREETING_SECOND_LINE_CHARS = 21; // "오늘도 교회를 위해 함께 해주셔서 감사해요."
+const GREETING_MIN_FONT_SIZE = 17;
+const GREETING_MAX_FONT_SIZE = FontSize.hero; // 22
 
-function getGreetingFontSize(width: number) {
-  if (width <= GREETING_MIN_WIDTH) {
-    return GREETING_MIN_FONT_SIZE;
-  }
-  if (width >= GREETING_MAX_WIDTH) {
-    return FontSize.hero;
-  }
+function getGreetingFontSize(viewportWidth: number) {
+  // scrollContent padding only — hero no longer double-pads horizontally
+  const contentWidth = Math.min(viewportWidth, MaxContentWidth) - Spacing.three * 2;
+  // Slightly optimistic glyph width so the line can sit a touch larger.
+  const maxForOneLine = Math.floor((contentWidth + 8) / GREETING_SECOND_LINE_CHARS);
 
-  const t = (width - GREETING_MIN_WIDTH) / (GREETING_MAX_WIDTH - GREETING_MIN_WIDTH);
-  return Math.round(GREETING_MIN_FONT_SIZE + t * (FontSize.hero - GREETING_MIN_FONT_SIZE));
+  return Math.max(
+    GREETING_MIN_FONT_SIZE,
+    Math.min(GREETING_MAX_FONT_SIZE, maxForOneLine),
+  );
 }
 
 export default function HomeScreen() {
@@ -44,7 +43,7 @@ export default function HomeScreen() {
   const isDark = useColorScheme() === 'dark';
   const { width } = useWindowDimensions();
   const greetingFontSize = getGreetingFontSize(width);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollView | null>(null);
   const { handleScroll, preserveScrollPosition, collapseWithPreservedPosition, scrollOffsetRef } =
     usePreservedCollapse(scrollRef);
   const [showAttendance, setShowAttendance] = useState(false);
@@ -67,8 +66,10 @@ export default function HomeScreen() {
     <TabScreenSlide tabIndex={0}>
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <ScrollView
+          <PullToRefreshScrollView
             ref={scrollRef}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
             onScroll={handleScroll}
             scrollEventThrottle={16}
             keyboardShouldPersistTaps="handled"
@@ -81,15 +82,7 @@ export default function HomeScreen() {
                 paddingBottom: BottomTabInset + Spacing.five,
               },
             ]}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={theme.textSecondary}
-                colors={[theme.textSecondary]}
-              />
-            }>
+            showsVerticalScrollIndicator={false}>
             <ThemedView style={styles.heroSection}>
               <AnimatedIcon />
               <ThemedText
@@ -99,7 +92,7 @@ export default function HomeScreen() {
                   { fontSize: greetingFontSize, lineHeight: Math.round(greetingFontSize * 1.36) },
                 ]}>
                 소중한{' '}
-                <AnimatedUserName name={profile?.nameKo ?? '성도'} />
+                <AnimatedUserName name={profile?.nameKo ?? '성도'} fontSize={greetingFontSize} />
                 님,{'\n'}
                 오늘도 교회를 위해 함께 해주셔서 감사해요.
               </ThemedText>
@@ -155,7 +148,7 @@ export default function HomeScreen() {
                 </Pressable>
               </Link>
             </ThemedView>
-          </ScrollView>
+          </PullToRefreshScrollView>
         </SafeAreaView>
       </ThemedView>
     </TabScreenSlide>
@@ -182,7 +175,6 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     alignItems: 'center',
-    paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
     gap: Spacing.four,
   },

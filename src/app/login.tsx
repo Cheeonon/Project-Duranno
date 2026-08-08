@@ -20,16 +20,22 @@ import { getStaySignedInPreference, setStaySignedInPreference } from '@/lib/supa
 
 export default function LoginScreen() {
   const theme = useTheme();
-  const { signIn } = useAuth();
+  const { signIn, loginError, clearLoginError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [staySignedIn, setStaySignedIn] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const displayError = error ?? loginError;
 
   useEffect(() => {
     getStaySignedInPreference().then(setStaySignedIn);
   }, []);
+
+  const clearErrors = () => {
+    setError(null);
+    clearLoginError();
+  };
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -37,14 +43,11 @@ export default function LoginScreen() {
       return;
     }
 
+    clearErrors();
     setSubmitting(true);
     await setStaySignedInPreference(staySignedIn);
-    const { error: signInError } = await signIn(email.trim(), password);
+    await signIn(email.trim(), password);
     setSubmitting(false);
-
-    if (signInError) {
-      setError(signInError);
-    }
   };
 
   return (
@@ -80,7 +83,7 @@ export default function LoginScreen() {
                   value={email}
                   onChangeText={(text) => {
                     setEmail(text);
-                    setError(null);
+                    clearErrors();
                   }}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -109,7 +112,7 @@ export default function LoginScreen() {
                   value={password}
                   onChangeText={(text) => {
                     setPassword(text);
-                    setError(null);
+                    clearErrors();
                   }}
                   placeholder="비밀번호 입력"
                   placeholderTextColor={theme.textSecondary}
@@ -152,12 +155,6 @@ export default function LoginScreen() {
                 </View>
               </Pressable>
 
-              {error ? (
-                <ThemedText type="small" style={styles.errorText}>
-                  {error}
-                </ThemedText>
-              ) : null}
-
               <Pressable
                 onPress={handleSubmit}
                 disabled={submitting}
@@ -170,6 +167,12 @@ export default function LoginScreen() {
                   {submitting ? '로그인 중...' : '로그인'}
                 </ThemedText>
               </Pressable>
+
+              {displayError ? (
+                <ThemedText type="small" style={styles.errorText}>
+                  {displayError}
+                </ThemedText>
+              ) : null}
             </ThemedView>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -267,6 +270,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#EF4444',
+    textAlign: 'center',
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   loginButton: {

@@ -1,0 +1,20 @@
+-- Reference only if another environment still has the old enum.
+-- Live project already uses:
+--   public.member_permission = ('성도', '셀장', '사역자', '재정', '관리자')
+-- Removed: 임원
+--
+-- If you need to recreate the type on a fresh DB copy that still has 임원:
+--
+--   update public.members set permission = '관리자' where permission::text = '임원';
+--   -- drop/recreate policies that block ALTER TYPE (see 0011 / 0015), then:
+--   alter table public.members
+--     alter column permission drop default,
+--     alter column permission type text using permission::text;
+--   drop type public.member_permission;
+--   create type public.member_permission as enum ('성도', '셀장', '사역자', '재정', '관리자');
+--   alter table public.members
+--     alter column permission type public.member_permission
+--     using permission::public.member_permission,
+--     alter column permission set default '성도'::public.member_permission;
+--   -- recreate RLS policies without 임원 (관리자 / 사역자 / 재정 / 셀장 as appropriate)
+select 1;

@@ -1,40 +1,54 @@
-import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  InteractionManager,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MemberAvatar } from '@/components/member-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { StackScreenEnter } from '@/components/stack-screen-enter';
-import { BorderRadius, BottomTabInset, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  Accent,
+  BorderRadius,
+  BottomTabInset,
+  FontSize,
+  MaxContentWidth,
+  Spacing,
+} from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
-import { formatMemberDob, searchChurchMembers } from '@/lib/member-search';
+import {
+  CA_PROVINCE_OPTIONS,
+  formatMemberAddressLines,
+  formatPostalCode,
+  getPostalCodeError,
+  getPostalCodeSaveError,
+} from '@/lib/member-address';
+import { formatMemberNameEn } from '@/lib/member-name';
+import { formatPhoneNumber } from '@/lib/member-phone';
+import { formatMemberDob, getManAge, searchChurchMembers } from '@/lib/member-search';
 import { formatCellHistoryPeriod } from '@/lib/cell-history';
 import { deleteMemberPhoto, uploadMemberPhoto } from '@/lib/member-photos';
 import { supabase } from '@/lib/supabase';
-import type { CellGroupMembership, ChurchPosition, Gender, Member, MemberPermission } from '@/types/member';
-
-const POSITION_OPTIONS: ChurchPosition[] = [
-  '목사',
-  '사모',
-  '전도사',
-  '간사',
-  '집사',
-  '장로',
-  '권사',
-  '셀장',
-  '새신자 팀원',
-  '셀원',
-  '회장',
-  '부회장',
-  '새신자 팀장',
-];
-
-const PERMISSION_OPTIONS: MemberPermission[] = ['성도', '임원', '셀장', '사역자', '재정', '관리자'];
+import {
+  CHURCH_POSITION_OPTIONS,
+  MEMBER_MINISTRY_OPTIONS,
+  MEMBER_PERMISSION_OPTIONS,
+  type CellGroupMembership,
+  type Gender,
+  type Member,
+  type MemberPermission,
+} from '@/types/member';
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: 'male', label: '남' },
@@ -46,13 +60,36 @@ function canEditMember(
   myEffectiveLeaderId: string | null,
   member: Member,
 ) {
-  if (permission === '임원' || permission === '관리자') {
+  if (permission === '관리자') {
     return true;
   }
   if (permission === '셀장') {
     return (member.cellLeaderId ?? member.id) === myEffectiveLeaderId;
   }
   return false;
+}
+
+function isMemberEditDirty(draft: Member, baseline: Member) {
+  return (
+    draft.nameKo !== baseline.nameKo ||
+    draft.firstNameEn !== baseline.firstNameEn ||
+    draft.lastNameEn !== baseline.lastNameEn ||
+    draft.dob !== baseline.dob ||
+    draft.gender !== baseline.gender ||
+    draft.phone !== baseline.phone ||
+    draft.addressStreet !== baseline.addressStreet ||
+    draft.addressUnit !== baseline.addressUnit ||
+    draft.addressCity !== baseline.addressCity ||
+    draft.addressProvince !== baseline.addressProvince ||
+    draft.addressPostalCode !== baseline.addressPostalCode ||
+    draft.cellLeaderId !== baseline.cellLeaderId ||
+    draft.introducerId !== baseline.introducerId ||
+    draft.permission !== baseline.permission ||
+    draft.position !== baseline.position ||
+    draft.isMarried !== baseline.isMarried ||
+    draft.ministry !== baseline.ministry ||
+    draft.photoPath !== baseline.photoPath
+  );
 }
 
 function PreviousCellHistory({ history }: { history: CellGroupMembership[] }) {
@@ -86,16 +123,24 @@ export default function MembersScreen() {
   const { members, isLoading, error, refresh } = useMembers();
   const [query, setQuery] = useState('');
   const [accountMemberIds, setAccountMemberIds] = useState<Set<string>>(new Set());
+  const [suspendedMemberIds, setSuspendedMemberIds] = useState<Set<string>>(new Set());
+  const [suspendSubmittingId, setSuspendSubmittingId] = useState<string | null>(null);
+  const [suspendError, setSuspendError] = useState<string | null>(null);
 
   const loadAccounts = useCallback(async () => {
-    const { data } = await supabase.from('profiles').select('member_id');
-    setAccountMemberIds(new Set((data ?? []).map((row) => row.member_id as string)));
+    const { data } = await supabase.from('profiles').select('member_id, is_suspended');
+    const rows = (data ?? []).filter((row) => row.member_id);
+    setAccountMemberIds(new Set(rows.map((row) => row.member_id as string)));
+    setSuspendedMemberIds(
+      new Set(rows.filter((row) => row.is_suspended).map((row) => row.member_id as string)),
+    );
   }, []);
 
   useEffect(() => {
-    // Also re-invoked after issuing an account, not just on mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadAccounts();
+    const task = InteractionManager.runAfterInteractions(() => {
+      void loadAccounts();
+    });
+    return () => task.cancel();
   }, [loadAccounts]);
 
   const results = useMemo(() => searchChurchMembers(query, members), [query, members]);
@@ -105,6 +150,7 @@ export default function MembersScreen() {
 
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [editDraft, setEditDraft] = useState<Member | null>(null);
+  const [editBaseline, setEditBaseline] = useState<Member | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -112,14 +158,46 @@ export default function MembersScreen() {
   // member row — used to clean up the orphaned object if the user cancels.
   const [uploadedPhotoThisSession, setUploadedPhotoThisSession] = useState<string | null>(null);
   const [photoPreviewUri, setPhotoPreviewUri] = useState<string | null>(null);
+  const [provinceMenuOpen, setProvinceMenuOpen] = useState(false);
+  const [introducerQuery, setIntroducerQuery] = useState('');
+  const [leaveConfirmVisible, setLeaveConfirmVisible] = useState(false);
 
   const openEdit = (member: Member) => {
+    const draft: Member = {
+      ...member,
+      phone: formatPhoneNumber(member.phone),
+      addressProvince: member.addressProvince || 'ON',
+    };
     setEditingMember(member);
-    setEditDraft({ ...member });
+    setEditDraft(draft);
+    setEditBaseline(draft);
     setEditError(null);
     setUploadedPhotoThisSession(null);
     setPhotoPreviewUri(null);
+    setProvinceMenuOpen(false);
+    setIntroducerQuery(member.introducerName ?? '');
+    setLeaveConfirmVisible(false);
   };
+
+  const introducerSuggestions = useMemo(() => {
+    if (!editDraft) {
+      return [];
+    }
+    const q = introducerQuery.trim();
+    if (!q) {
+      return [];
+    }
+    return members
+      .filter((candidate) => candidate.id !== editDraft.id)
+      .filter((candidate) => candidate.nameKo.includes(q))
+      .slice(0, 12);
+  }, [editDraft, introducerQuery, members]);
+
+  const hasUnsavedEdits = Boolean(
+    editDraft &&
+      editBaseline &&
+      (uploadedPhotoThisSession || isMemberEditDirty(editDraft, editBaseline)),
+  );
 
   const closeEdit = () => {
     if (uploadedPhotoThisSession) {
@@ -127,9 +205,24 @@ export default function MembersScreen() {
     }
     setEditingMember(null);
     setEditDraft(null);
+    setEditBaseline(null);
     setEditError(null);
     setUploadedPhotoThisSession(null);
     setPhotoPreviewUri(null);
+    setProvinceMenuOpen(false);
+    setIntroducerQuery('');
+    setLeaveConfirmVisible(false);
+  };
+
+  const requestCloseEdit = () => {
+    if (editSubmitting) {
+      return;
+    }
+    if (!hasUnsavedEdits) {
+      closeEdit();
+      return;
+    }
+    setLeaveConfirmVisible(true);
   };
 
   const pickAndUploadPhoto = async () => {
@@ -137,6 +230,7 @@ export default function MembersScreen() {
       return;
     }
 
+    const ImagePicker = await import('expo-image-picker');
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       setEditError('사진 보관함 접근 권한이 필요합니다.');
@@ -176,19 +270,36 @@ export default function MembersScreen() {
       return;
     }
 
+    const postalError = getPostalCodeSaveError(editDraft.addressPostalCode);
+    if (postalError) {
+      setEditError(postalError);
+      return;
+    }
+
     setEditSubmitting(true);
+    setEditError(null);
     const { error: saveError } = await supabase
       .from('members')
       .update({
         name_ko: editDraft.nameKo,
-        name_en: editDraft.nameEn || null,
+        first_name_en: editDraft.firstNameEn || null,
+        last_name_en: editDraft.lastNameEn || null,
         dob: editDraft.dob,
         gender: editDraft.gender,
         phone: editDraft.phone || null,
-        address: editDraft.address || null,
+        address_street: editDraft.addressStreet || null,
+        address_unit: editDraft.addressUnit || null,
+        address_city: editDraft.addressCity || null,
+        address_province: editDraft.addressProvince || null,
+        address_postal_code: editDraft.addressPostalCode
+          ? formatPostalCode(editDraft.addressPostalCode)
+          : null,
         cell_leader_id: editDraft.cellLeaderId,
+        introducer_id: editDraft.introducerId,
         permission: editDraft.permission,
         position: editDraft.position,
+        is_married: editDraft.isMarried,
+        ministry: editDraft.ministry,
         photo_path: editDraft.photoPath,
       })
       .eq('id', editDraft.id);
@@ -214,11 +325,60 @@ export default function MembersScreen() {
   const [issueSubmitting, setIssueSubmitting] = useState(false);
 
   const openIssue = (member: Member) => {
+    if (member.permission === '성도') {
+      return;
+    }
     setIssuingMember(member);
     setIssueEmail('');
     setIssuePassword('');
     setIssueError(null);
   };
+
+  const toggleAccountSuspension = useCallback(
+    async (member: Member) => {
+      if (suspendSubmittingId) {
+        return;
+      }
+
+      const nextSuspended = !suspendedMemberIds.has(member.id);
+      setSuspendError(null);
+      setSuspendSubmittingId(member.id);
+
+      const { error: rpcError } = await supabase.rpc('set_member_account_suspended', {
+        p_member_id: member.id,
+        p_suspended: nextSuspended,
+      });
+
+      setSuspendSubmittingId(null);
+
+      if (rpcError) {
+        const message = rpcError.message.includes('관리자만')
+          ? '관리자만 활동정지를 설정할 수 있습니다.'
+          : rpcError.message.includes('본인 계정')
+            ? '본인 계정은 활동정지할 수 없습니다.'
+            : rpcError.message.includes('계정을 찾을 수 없')
+              ? '해당 성도의 계정을 찾을 수 없습니다.'
+              : rpcError.message.includes('does not exist') ||
+                  rpcError.message.includes('schema cache')
+                ? 'DB에 활동정지 기능이 아직 없습니다. 0028 SQL을 실행해주세요.'
+                : rpcError.message || '계정 상태 변경에 실패했습니다.';
+        setSuspendError(message);
+        Alert.alert('활동정지', message);
+        return;
+      }
+
+      setSuspendedMemberIds((current) => {
+        const next = new Set(current);
+        if (nextSuspended) {
+          next.add(member.id);
+        } else {
+          next.delete(member.id);
+        }
+        return next;
+      });
+    },
+    [suspendSubmittingId, suspendedMemberIds],
+  );
 
   const closeIssue = () => {
     setIssuingMember(null);
@@ -229,6 +389,11 @@ export default function MembersScreen() {
 
   const submitIssue = async () => {
     if (!issuingMember) {
+      return;
+    }
+
+    if (issuingMember.permission === '성도') {
+      setIssueError('권한이 성도인 경우에는 계정을 발급할 수 없습니다.');
       return;
     }
 
@@ -253,23 +418,155 @@ export default function MembersScreen() {
     refresh();
   };
 
-  return (
-    <StackScreenEnter>
-      <ThemedView style={styles.screen}>
-        <SafeAreaView style={styles.safeArea}>
-          <Pressable
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/');
-              }
-            }}
-            style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}>
+  const renderMemberCard = useCallback(
+    ({ item: member }: { item: Member }) => {
+      const editable = canEditMember(profile?.permission, myEffectiveLeaderId, member);
+      const hasAccount = accountMemberIds.has(member.id);
+      const isSuspended = suspendedMemberIds.has(member.id);
+      const isOwnAccount = profile?.memberId === member.id;
+      const canIssueAccount = member.permission !== '성도';
+      const manAge = getManAge(member.dob);
+      const addressLines = formatMemberAddressLines(member);
+      const suspendBusy = suspendSubmittingId === member.id;
+
+      return (
+        <ThemedView type="backgroundElement" style={styles.card}>
+          <View style={styles.cardTopRow}>
+            <MemberAvatar uri={member.photoUrl} nameKo={member.nameKo} size={48} />
+            <View style={styles.cardHeader}>
+              <ThemedText type="smallBold">
+                {member.nameKo}{' '}
+                <ThemedText type="code" themeColor="textSecondary">
+                  {formatMemberNameEn(member)}
+                </ThemedText>
+              </ThemedText>
+              <ThemedText type="code" themeColor="textSecondary">
+                {member.position} · {member.permission} · {member.ministry}
+                {member.isMarried ? ' · 기혼' : ' · 미혼'}
+              </ThemedText>
+            </View>
+          </View>
+
+          <ThemedText type="small" themeColor="textSecondary">
+            생년월일 · {formatMemberDob(member.dob)}
+            {manAge != null ? ` · 만 ${manAge}세` : ''}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            전화번호 · {member.phone || '-'}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            셀그룹 · {member.cellGroup}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            인도자 · {member.introducerName || '-'}
+          </ThemedText>
+          <PreviousCellHistory history={member.previousCellGroups} />
+          {addressLines.length === 0 ? (
             <ThemedText type="small" themeColor="textSecondary">
-              ‹ 홈
+              주소 · -
             </ThemedText>
-          </Pressable>
+          ) : (
+            <View style={styles.addressBlock}>
+              <ThemedText type="small" themeColor="textSecondary">
+                주소
+              </ThemedText>
+              {addressLines.map((line) => (
+                <ThemedText key={line} type="small" themeColor="textSecondary">
+                  {line}
+                </ThemedText>
+              ))}
+            </View>
+          )}
+
+          {isSuspended && (
+            <ThemedText type="small" style={{ color: '#E5484D' }}>
+              활동이 정지되었습니다
+            </ThemedText>
+          )}
+
+          <View style={styles.cardActions}>
+            {editable && (
+              <Pressable
+                onPress={() => openEdit(member)}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  { borderColor: theme.border },
+                  pressed && styles.pressed,
+                ]}>
+                <ThemedText type="small">수정</ThemedText>
+              </Pressable>
+            )}
+
+            {isAdmin && canIssueAccount && !hasAccount && (
+              <Pressable
+                onPress={() => openIssue(member)}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  { borderColor: theme.border },
+                  pressed && styles.pressed,
+                ]}>
+                <ThemedText type="small">계정 발급</ThemedText>
+              </Pressable>
+            )}
+
+            {isAdmin && hasAccount && !isOwnAccount && (
+              <Pressable
+                disabled={suspendBusy}
+                onPress={() => void toggleAccountSuspension(member)}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  {
+                    borderColor: isSuspended ? Accent.green : '#E5484D',
+                  },
+                  suspendBusy && styles.actionButtonDisabled,
+                  pressed && styles.pressed,
+                ]}>
+                <ThemedText
+                  type="small"
+                  style={{ color: isSuspended ? Accent.green : '#E5484D' }}>
+                  {suspendBusy
+                    ? '처리 중...'
+                    : isSuspended
+                      ? '활동 재개'
+                      : '활동정지'}
+                </ThemedText>
+              </Pressable>
+            )}
+          </View>
+        </ThemedView>
+      );
+    },
+    [
+      accountMemberIds,
+      isAdmin,
+      myEffectiveLeaderId,
+      profile?.memberId,
+      profile?.permission,
+      suspendSubmittingId,
+      suspendedMemberIds,
+      theme.border,
+      toggleAccountSuspension,
+    ],
+  );
+
+  const postalCodeError = editDraft ? getPostalCodeError(editDraft.addressPostalCode) : null;
+
+  return (
+    <ThemedView style={styles.screen}>
+      <SafeAreaView style={styles.safeArea}>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/');
+            }
+          }}
+          style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}>
+          <ThemedText type="small" themeColor="textSecondary">
+            ‹ 홈
+          </ThemedText>
+        </Pressable>
 
         <ThemedText type="subtitle" style={styles.title}>
           성도관리
@@ -290,80 +587,41 @@ export default function MembersScreen() {
           {isLoading ? '불러오는 중...' : error ? error : `${results.length}명`}
         </ThemedText>
 
-        <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-          {results.map((member) => {
-            const editable = canEditMember(profile?.permission, myEffectiveLeaderId, member);
-            const hasAccount = accountMemberIds.has(member.id);
+        {suspendError ? (
+          <ThemedText type="small" style={{ color: '#E5484D', marginBottom: Spacing.two }}>
+            {suspendError}
+          </ThemedText>
+        ) : null}
 
-            return (
-              <ThemedView key={member.id} type="backgroundElement" style={styles.card}>
-                <View style={styles.cardTopRow}>
-                  <MemberAvatar uri={member.photoUrl} nameKo={member.nameKo} size={48} />
-                  <View style={styles.cardHeader}>
-                    <ThemedText type="smallBold">
-                      {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
-                    </ThemedText>
-                    <ThemedText type="code" themeColor="textSecondary">
-                      {member.position} · {member.permission}
-                    </ThemedText>
-                  </View>
-                </View>
-
-                <ThemedText type="small" themeColor="textSecondary">
-                  생년월일 · {formatMemberDob(member.dob)}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  전화번호 · {member.phone || '-'}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  셀그룹 · {member.cellGroup}
-                </ThemedText>
-                <PreviousCellHistory history={member.previousCellGroups} />
-                <ThemedText type="small" themeColor="textSecondary">
-                  주소 · {member.address || '-'}
-                </ThemedText>
-
-                <View style={styles.cardActions}>
-                  {editable && (
-                    <Pressable
-                      onPress={() => openEdit(member)}
-                      style={({ pressed }) => [
-                        styles.actionButton,
-                        { borderColor: theme.border },
-                        pressed && styles.pressed,
-                      ]}>
-                      <ThemedText type="small">수정</ThemedText>
-                    </Pressable>
-                  )}
-
-                  {isAdmin && (
-                    <Pressable
-                      disabled={hasAccount}
-                      onPress={() => openIssue(member)}
-                      style={({ pressed }) => [
-                        styles.actionButton,
-                        { borderColor: theme.border },
-                        hasAccount && styles.actionButtonDisabled,
-                        pressed && styles.pressed,
-                      ]}>
-                      <ThemedText type="small" themeColor={hasAccount ? 'textSecondary' : 'text'}>
-                        {hasAccount ? '계정 있음' : '계정 발급'}
-                      </ThemedText>
-                    </Pressable>
-                  )}
-                </View>
-              </ThemedView>
-            );
-          })}
-        </ScrollView>
+        <FlatList
+          style={styles.listFlex}
+          data={results}
+          keyExtractor={(member) => member.id}
+          renderItem={renderMemberCard}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
+        />
       </SafeAreaView>
 
-      <Modal visible={editingMember !== null} transparent animationType="fade" onRequestClose={closeEdit}>
-        <Pressable style={styles.modalOverlay} onPress={closeEdit}>
-          <View
-            style={[styles.modalCard, { backgroundColor: theme.background }]}
-            onStartShouldSetResponder={() => true}>
-            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+      <Modal
+        visible={editingMember !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={requestCloseEdit}>
+        <View style={styles.modalOverlay}>
+          <Pressable
+            accessibilityLabel="수정 닫기"
+            onPress={requestCloseEdit}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[styles.modalCard, { backgroundColor: theme.background }]}>
+            <ScrollView
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled">
               <ThemedText type="smallBold">성도 정보 수정</ThemedText>
 
               {editDraft && (
@@ -394,10 +652,19 @@ export default function MembersScreen() {
                     style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
                   />
                   <TextInput
-                    value={editDraft.nameEn}
-                    onChangeText={(text) => setEditDraft({ ...editDraft, nameEn: text })}
-                    placeholder="영문 이름"
+                    value={editDraft.firstNameEn}
+                    onChangeText={(text) => setEditDraft({ ...editDraft, firstNameEn: text })}
+                    placeholder="First Name"
                     placeholderTextColor={theme.textSecondary}
+                    autoCapitalize="words"
+                    style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+                  />
+                  <TextInput
+                    value={editDraft.lastNameEn}
+                    onChangeText={(text) => setEditDraft({ ...editDraft, lastNameEn: text })}
+                    placeholder="Last Name"
+                    placeholderTextColor={theme.textSecondary}
+                    autoCapitalize="words"
                     style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
                   />
                   <TextInput
@@ -409,16 +676,105 @@ export default function MembersScreen() {
                   />
                   <TextInput
                     value={editDraft.phone}
-                    onChangeText={(text) => setEditDraft({ ...editDraft, phone: text })}
-                    placeholder="전화번호"
+                    onChangeText={(text) =>
+                      setEditDraft({ ...editDraft, phone: formatPhoneNumber(text) })
+                    }
+                    placeholder="xxx-xxx-xxxx"
+                    placeholderTextColor={theme.textSecondary}
+                    keyboardType="phone-pad"
+                    maxLength={12}
+                    style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+                  />
+                  <ThemedText type="small" themeColor="textSecondary">
+                    주소 (캐나다)
+                  </ThemedText>
+                  <TextInput
+                    value={editDraft.addressStreet}
+                    onChangeText={(text) => setEditDraft({ ...editDraft, addressStreet: text })}
+                    placeholder="Street (예: 123 Finch Ave W)"
+                    placeholderTextColor={theme.textSecondary}
+                    autoCapitalize="words"
+                    style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+                  />
+                  <TextInput
+                    value={editDraft.addressUnit}
+                    onChangeText={(text) => setEditDraft({ ...editDraft, addressUnit: text })}
+                    placeholder="Unit / Apt (선택)"
                     placeholderTextColor={theme.textSecondary}
                     style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
                   />
                   <TextInput
-                    value={editDraft.address}
-                    onChangeText={(text) => setEditDraft({ ...editDraft, address: text })}
-                    placeholder="주소"
+                    value={editDraft.addressCity}
+                    onChangeText={(text) => setEditDraft({ ...editDraft, addressCity: text })}
+                    placeholder="City (예: North York)"
                     placeholderTextColor={theme.textSecondary}
+                    autoCapitalize="words"
+                    style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+                  />
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Province
+                  </ThemedText>
+                  <View style={styles.dropdownWrap}>
+                    <Pressable
+                      accessibilityLabel="Province 선택"
+                      onPress={() => setProvinceMenuOpen((open) => !open)}
+                      style={[
+                        styles.dropdownButton,
+                        {
+                          borderColor: theme.border,
+                          backgroundColor: theme.backgroundElement,
+                        },
+                      ]}>
+                      <ThemedText type="small">{editDraft.addressProvince || 'ON'}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {provinceMenuOpen ? '▴' : '▾'}
+                      </ThemedText>
+                    </Pressable>
+                    {provinceMenuOpen ? (
+                      <ThemedView
+                        type="background"
+                        style={[styles.dropdownMenu, { borderColor: theme.border }]}>
+                        <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+                          {CA_PROVINCE_OPTIONS.map((province) => {
+                            const selected = (editDraft.addressProvince || 'ON') === province;
+                            return (
+                              <Pressable
+                                key={province}
+                                onPress={() => {
+                                  setEditDraft({ ...editDraft, addressProvince: province });
+                                  setProvinceMenuOpen(false);
+                                }}
+                                style={[
+                                  styles.dropdownItem,
+                                  selected && styles.dropdownItemSelected,
+                                ]}>
+                                <ThemedText type="small" themeColor={selected ? 'text' : 'textSecondary'}>
+                                  {province}
+                                </ThemedText>
+                              </Pressable>
+                            );
+                          })}
+                        </ScrollView>
+                      </ThemedView>
+                    ) : null}
+                  </View>
+                  {postalCodeError ? (
+                    <ThemedText type="small" style={styles.fieldError}>
+                      {postalCodeError}
+                    </ThemedText>
+                  ) : null}
+                  <TextInput
+                    value={editDraft.addressPostalCode}
+                    onChangeText={(text) => {
+                      setEditDraft({ ...editDraft, addressPostalCode: formatPostalCode(text) });
+                      if (editError) {
+                        setEditError(null);
+                      }
+                    }}
+                    placeholder="Postal Code (예: M2N 1A1)"
+                    placeholderTextColor={theme.textSecondary}
+                    autoCapitalize="characters"
+                    maxLength={7}
                     style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
                   />
                   <ThemedText type="small" themeColor="textSecondary">
@@ -448,6 +804,97 @@ export default function MembersScreen() {
                   </View>
 
                   <ThemedText type="small" themeColor="textSecondary">
+                    인도자
+                  </ThemedText>
+                  <View style={styles.dropdownWrap}>
+                    <View style={styles.introducerInputRow}>
+                      <TextInput
+                        value={introducerQuery}
+                        onChangeText={(text) => {
+                          setIntroducerQuery(text);
+                          const selectedName = editDraft.introducerName ?? '';
+                          if (!text.trim() || (editDraft.introducerId && text.trim() !== selectedName)) {
+                            setEditDraft({
+                              ...editDraft,
+                              introducerId: null,
+                              introducerName: null,
+                            });
+                          }
+                        }}
+                        placeholder="이름 입력 후 선택"
+                        placeholderTextColor={theme.textSecondary}
+                        style={[
+                          styles.input,
+                          styles.introducerInput,
+                          { color: theme.text, backgroundColor: theme.backgroundElement },
+                        ]}
+                      />
+                      {editDraft.introducerId || introducerQuery ? (
+                        <Pressable
+                          accessibilityLabel="인도자 지우기"
+                          onPress={() => {
+                            setIntroducerQuery('');
+                            setEditDraft({
+                              ...editDraft,
+                              introducerId: null,
+                              introducerName: null,
+                            });
+                          }}
+                          style={({ pressed }) => [
+                            styles.introducerClear,
+                            { borderColor: theme.border },
+                            pressed && styles.pressed,
+                          ]}>
+                          <ThemedText type="small" themeColor="textSecondary">
+                            지우기
+                          </ThemedText>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                    {introducerQuery.trim().length > 0 && !editDraft.introducerId ? (
+                      <ThemedView
+                        type="background"
+                        style={[styles.dropdownMenu, { borderColor: theme.border }]}>
+                        {introducerSuggestions.length > 0 ? (
+                          <ScrollView style={styles.dropdownScroll} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                            {introducerSuggestions.map((candidate) => (
+                              <Pressable
+                                key={candidate.id}
+                                onPress={() => {
+                                  setEditDraft({
+                                    ...editDraft,
+                                    introducerId: candidate.id,
+                                    introducerName: candidate.nameKo,
+                                  });
+                                  setIntroducerQuery(candidate.nameKo);
+                                }}
+                                style={styles.dropdownItem}>
+                                <ThemedText type="small">
+                                  {candidate.nameKo}{' '}
+                                  <ThemedText type="code" themeColor="textSecondary">
+                                    · {candidate.position}
+                                  </ThemedText>
+                                </ThemedText>
+                              </Pressable>
+                            ))}
+                          </ScrollView>
+                        ) : (
+                          <View style={styles.dropdownItem}>
+                            <ThemedText type="small" themeColor="textSecondary">
+                              일치하는 성도가 없습니다
+                            </ThemedText>
+                          </View>
+                        )}
+                      </ThemedView>
+                    ) : null}
+                    {editDraft.introducerId ? (
+                      <ThemedText type="small" themeColor="textSecondary">
+                        선택됨 · {editDraft.introducerName}
+                      </ThemedText>
+                    ) : null}
+                  </View>
+
+                  <ThemedText type="small" themeColor="textSecondary">
                     성별
                   </ThemedText>
                   <View style={styles.chipRow}>
@@ -468,7 +915,7 @@ export default function MembersScreen() {
                     직분
                   </ThemedText>
                   <View style={styles.chipRow}>
-                    {POSITION_OPTIONS.map((option) => (
+                    {CHURCH_POSITION_OPTIONS.map((option) => (
                       <Pressable key={option} onPress={() => setEditDraft({ ...editDraft, position: option })}>
                         <ThemedView
                           type={editDraft.position === option ? 'backgroundSelected' : 'background'}
@@ -483,12 +930,51 @@ export default function MembersScreen() {
                     권한
                   </ThemedText>
                   <View style={styles.chipRow}>
-                    {PERMISSION_OPTIONS.map((option) => (
+                    {MEMBER_PERMISSION_OPTIONS.map((option) => (
                       <Pressable key={option} onPress={() => setEditDraft({ ...editDraft, permission: option })}>
                         <ThemedView
                           type={editDraft.permission === option ? 'backgroundSelected' : 'background'}
                           style={[styles.chip, { borderColor: theme.border }]}>
                           <ThemedText type="small">{option}</ThemedText>
+                        </ThemedView>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  <ThemedText type="small" themeColor="textSecondary">
+                    부서
+                  </ThemedText>
+                  <View style={styles.chipRow}>
+                    {MEMBER_MINISTRY_OPTIONS.map((option) => (
+                      <Pressable
+                        key={option}
+                        onPress={() => setEditDraft({ ...editDraft, ministry: option })}>
+                        <ThemedView
+                          type={editDraft.ministry === option ? 'backgroundSelected' : 'background'}
+                          style={[styles.chip, { borderColor: theme.border }]}>
+                          <ThemedText type="small">{option}</ThemedText>
+                        </ThemedView>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  <ThemedText type="small" themeColor="textSecondary">
+                    결혼 여부
+                  </ThemedText>
+                  <View style={styles.chipRow}>
+                    {(
+                      [
+                        { value: false, label: '미혼' },
+                        { value: true, label: '기혼' },
+                      ] as const
+                    ).map((option) => (
+                      <Pressable
+                        key={option.label}
+                        onPress={() => setEditDraft({ ...editDraft, isMarried: option.value })}>
+                        <ThemedView
+                          type={editDraft.isMarried === option.value ? 'backgroundSelected' : 'background'}
+                          style={[styles.chip, { borderColor: theme.border }]}>
+                          <ThemedText type="small">{option.label}</ThemedText>
                         </ThemedView>
                       </Pressable>
                     ))}
@@ -504,7 +990,7 @@ export default function MembersScreen() {
 
               <View style={styles.modalActions}>
                 <Pressable
-                  onPress={closeEdit}
+                  onPress={requestCloseEdit}
                   style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
                   <ThemedText type="small" themeColor="textSecondary">
                     취소
@@ -512,7 +998,7 @@ export default function MembersScreen() {
                 </Pressable>
                 <Pressable
                   disabled={editSubmitting}
-                  onPress={saveEdit}
+                  onPress={() => void saveEdit()}
                   style={({ pressed }) => [
                     styles.modalButton,
                     styles.modalButtonPrimary,
@@ -525,14 +1011,59 @@ export default function MembersScreen() {
               </View>
             </ScrollView>
           </View>
-        </Pressable>
+
+          {leaveConfirmVisible ? (
+            <View style={styles.leaveConfirmOverlay}>
+              <ThemedView type="background" style={[styles.leaveConfirmCard, { borderColor: theme.border }]}>
+                <ThemedText type="smallBold">저장하시겠습니까?</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  변경된 내용이 있습니다. 저장하지 않으면 사라집니다.
+                </ThemedText>
+                <View style={styles.leaveConfirmActions}>
+                  <Pressable
+                    onPress={() => setLeaveConfirmVisible(false)}
+                    style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      계속 수정
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    onPress={closeEdit}
+                    style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
+                    <ThemedText type="small" style={styles.leaveDiscardLabel}>
+                      저장 안 함
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    disabled={editSubmitting}
+                    onPress={() => {
+                      setLeaveConfirmVisible(false);
+                      void saveEdit();
+                    }}
+                    style={({ pressed }) => [
+                      styles.modalButton,
+                      styles.modalButtonPrimary,
+                      pressed && styles.pressed,
+                    ]}>
+                    <ThemedText type="smallBold" style={{ color: '#FFFFFF' }}>
+                      저장
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </ThemedView>
+            </View>
+          ) : null}
+        </View>
       </Modal>
 
       <Modal visible={issuingMember !== null} transparent animationType="fade" onRequestClose={closeIssue}>
-        <Pressable style={styles.modalOverlay} onPress={closeIssue}>
-          <View
-            style={[styles.modalCard, { backgroundColor: theme.background }]}
-            onStartShouldSetResponder={() => true}>
+        <View style={styles.modalOverlay}>
+          <Pressable
+            accessibilityLabel="계정 발급 닫기"
+            onPress={closeIssue}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[styles.modalCard, { backgroundColor: theme.background }]}>
             <ThemedText type="smallBold">계정 발급</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {issuingMember?.nameKo}에게 로그인 계정을 발급합니다.
@@ -584,10 +1115,9 @@ export default function MembersScreen() {
               </Pressable>
             </View>
           </View>
-        </Pressable>
+        </View>
       </Modal>
       </ThemedView>
-    </StackScreenEnter>
   );
 }
 
@@ -619,6 +1149,9 @@ const styles = StyleSheet.create({
   resultCount: {
     fontSize: FontSize.caption,
   },
+  listFlex: {
+    flex: 1,
+  },
   list: {
     gap: Spacing.two,
     paddingBottom: BottomTabInset + Spacing.five,
@@ -641,6 +1174,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+  },
+  addressBlock: {
+    gap: 2,
   },
   historyBlock: {
     gap: 2,
@@ -680,6 +1216,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     padding: Spacing.three,
     gap: Spacing.two,
+    zIndex: 1,
   },
   modalScrollContent: {
     gap: Spacing.two,
@@ -688,6 +1225,81 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: Spacing.two,
+  },
+  leaveConfirmOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.four,
+    zIndex: 10,
+  },
+  leaveConfirmCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: BorderRadius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.three,
+    gap: Spacing.two,
+  },
+  leaveConfirmActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: Spacing.one,
+    marginTop: Spacing.one,
+  },
+  leaveDiscardLabel: {
+    color: '#E5484D',
+  },
+  fieldError: {
+    color: '#E5484D',
+    fontSize: FontSize.micro,
+    lineHeight: 16,
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  dropdownWrap: {
+    zIndex: 2,
+    gap: Spacing.one,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: BorderRadius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+  },
+  dropdownMenu: {
+    marginTop: Spacing.half,
+    borderRadius: BorderRadius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  dropdownScroll: {
+    maxHeight: 200,
+  },
+  dropdownItem: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+  },
+  dropdownItemSelected: {
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+  },
+  introducerInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  introducerInput: {
+    flex: 1,
+  },
+  introducerClear: {
+    borderRadius: BorderRadius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
   },
   modalButton: {
     borderRadius: BorderRadius.sm,

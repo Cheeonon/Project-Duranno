@@ -8,7 +8,9 @@ import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
-import { formatMemberDob, searchChurchMembers } from '@/lib/member-search';
+import { formatMemberAddress } from '@/lib/member-address';
+import { formatMemberNameEn } from '@/lib/member-name';
+import { formatMemberDob, getManAge, searchChurchMembers } from '@/lib/member-search';
 
 const RESULTS_MAX_HEIGHT = 320;
 
@@ -75,13 +77,19 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         {results.length > 0 ? (
-          results.map((member) => (
+          results.map((member) => {
+            const manAge = getManAge(member.dob);
+
+            return (
             <ThemedView key={member.id} type="background" style={[styles.resultCard, { borderColor: theme.border }]}>
               <View style={styles.resultHeader}>
                 <View style={styles.resultNameRow}>
                   <MemberAvatar uri={member.photoUrl} nameKo={member.nameKo} size={44} />
                   <ThemedText type="smallBold" style={styles.memberName}>
-                    {member.nameKo} <ThemedText type="code" themeColor="textSecondary">{member.nameEn}</ThemedText>
+                    {member.nameKo}{' '}
+                    <ThemedText type="code" themeColor="textSecondary">
+                      {formatMemberNameEn(member)}
+                    </ThemedText>
                   </ThemedText>
                 </View>
                 <ThemedText type="code" themeColor="textSecondary" style={styles.memberRole}>
@@ -92,6 +100,7 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
               <View style={styles.resultDetails}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.detailText}>
                   생년월일 · {formatMemberDob(member.dob)}
+                  {manAge != null ? ` · 만 ${manAge}세` : ''}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.detailText}>
                   전화번호 · {member.phone}
@@ -100,11 +109,12 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
                   셀그룹 · {member.cellGroup}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.detailText}>
-                  주소 · {member.address}
+                  주소 · {formatMemberAddress(member) || '-'}
                 </ThemedText>
               </View>
             </ThemedView>
-          ))
+            );
+          })
         ) : (
           <ThemedView type="background" style={styles.emptyState}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>

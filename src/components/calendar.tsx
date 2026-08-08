@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import {
   CALENDAR_FILTER_OPTIONS,
@@ -80,6 +80,7 @@ export function Calendar({
   const theme = useTheme();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+  const { height: windowHeight } = useWindowDimensions();
   const zoomAnchorRef = useRef<View>(null);
   const [today, setToday] = useState(() => new Date());
   const [viewDate, setViewDate] = useState(() => new Date());
@@ -87,6 +88,9 @@ export function Calendar({
   const [zoom, setZoom] = useState<CalendarZoom>('expanded');
 
   const isExpanded = zoom === 'expanded';
+  // Keep expanded weeks tall enough that event titles stay readable.
+  const expandedGridMinHeight = Math.round(Math.max(480, windowHeight * 0.58));
+  const expandedWeekMinHeight = Math.max(104, Math.round(expandedGridMinHeight / 6));
 
   const collapseToCompact = () => {
     const collapse = () => setZoom('compact');
@@ -186,7 +190,11 @@ export function Calendar({
   return (
     <ThemedView
       type="backgroundElement"
-      style={[styles.container, isDark ? styles.containerShadowDark : styles.containerShadowLight]}>
+      style={[
+        styles.container,
+        isExpanded && styles.containerExpanded,
+        isDark ? styles.containerShadowDark : styles.containerShadowLight,
+      ]}>
       <View style={styles.header}>
         <Pressable
           accessibilityLabel="이전 달"
@@ -206,6 +214,21 @@ export function Calendar({
           <ThemedText type="smallBold">›</ThemedText>
         </Pressable>
       </View>
+
+      {!isCurrentMonth && (
+        <Pressable
+          accessibilityLabel="이번 달로 돌아가기"
+          onPress={goToToday}
+          style={({ pressed }) => [
+            styles.backToMonthButton,
+            { borderColor: theme.border, backgroundColor: isDark ? '#2F4036' : '#DCFCE7' },
+            pressed && styles.pressed,
+          ]}>
+          <ThemedText type="smallBold" style={styles.backToMonthLabel}>
+            이번 달로 돌아가기
+          </ThemedText>
+        </Pressable>
+      )}
 
       {onToggleFilter && (
         <CalendarFilterSection
@@ -266,14 +289,23 @@ export function Calendar({
         ))}
       </View>
 
-      <View style={styles.grid}>
+      <View style={[styles.grid, isExpanded && { minHeight: expandedGridMinHeight }]}>
         {weekRows.map((week, weekIndex) => (
-          <View key={weekIndex} style={styles.weekRow}>
+          <View
+            key={weekIndex}
+            style={[styles.weekRow, isExpanded && { minHeight: expandedWeekMinHeight }]}>
             {week.map(({ date, dayEvents, markers }, index) => {
               const isToday = date ? isSameDay(date, today) : false;
               const isSunday = date?.getDay() === 0;
               const isSelected = date && selectedDate ? isSameDay(date, selectedDate) : false;
               const hasEvents = dayEvents.length > 0;
+              // Prefer church events as the "main" titles; keep birthdays after.
+              const orderedDayEvents = [...dayEvents].sort((a, b) => {
+                if (a.category === b.category) {
+                  return 0;
+                }
+                return a.category === 'events' ? -1 : 1;
+              });
 
               const dayInner = (
                 <View style={[styles.dayContent, isExpanded && styles.dayContentExpanded]}>
@@ -293,6 +325,7 @@ export function Calendar({
                       type="small"
                       style={[
                         styles.dayText,
+                        isExpanded && styles.dayTextExpanded,
                         isSunday && !isToday && styles.sundayText,
                         isToday && styles.todayText,
                         isSelected &&
@@ -308,17 +341,22 @@ export function Calendar({
                   {isExpanded ? (
                     hasEvents ? (
                       <View style={styles.expandedEvents}>
-                        {dayEvents.map((event) => {
+                        {orderedDayEvents.map((event, eventIndex) => {
+                          const isMainEvent = event.category === 'events' || eventIndex === 0;
                           const card = (
                             <View
                               style={[
                                 styles.expandedEventCard,
+                                isMainEvent && styles.expandedEventCardMain,
                                 { borderLeftColor: getMarkerColor(event.category) },
                               ]}>
                               <ThemedText
                                 type="smallBold"
-                                style={styles.expandedEventTitle}
-                                numberOfLines={2}>
+                                style={[
+                                  styles.expandedEventTitle,
+                                  isMainEvent && styles.expandedEventTitleMain,
+                                ]}
+                                numberOfLines={isMainEvent ? 3 : 2}>
                                 {event.title}
                               </ThemedText>
                             </View>
@@ -372,6 +410,7 @@ export function Calendar({
                   style={[
                     styles.cell,
                     isExpanded ? styles.cellExpanded : styles.cellCompact,
+                    isExpanded && { minHeight: expandedWeekMinHeight },
                     { borderBottomColor: theme.border },
                   ]}>
                   {date ? (
@@ -400,12 +439,6 @@ export function Calendar({
           </View>
         ))}
       </View>
-
-      {!isCurrentMonth && (
-        <Pressable onPress={goToToday} style={({ pressed }) => [styles.todayButton, pressed && styles.pressed]}>
-          <ThemedText type="link">오늘로 이동</ThemedText>
-        </Pressable>
-      )}
 
       {selectedDate && visibleSelectedEvents.length > 0 ? (
         <ThemedView type="backgroundSelected" style={styles.eventPanel}>
@@ -474,13 +507,15 @@ export function Calendar({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    alignSelf: 'center',
+    alignSelf: 'stretch',
     width: '100%',
     maxWidth: MaxContentWidth,
     borderRadius: BorderRadius.md,
     padding: Spacing.three,
     gap: Spacing.two,
+  },
+  containerExpanded: {
+    flexGrow: 1,
   },
   containerShadowLight: {
     boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.3)', inset: true }],
@@ -517,7 +552,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   monthLabel: {
-    fontSize: FontSize.caption,
+    fontSize: FontSize.small,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   navButton: {
@@ -555,6 +590,8 @@ const styles = StyleSheet.create({
   },
   cellExpanded: {
     alignItems: 'stretch',
+    paddingHorizontal: 3,
+    paddingVertical: 3,
   },
   dayPressable: {
     flex: 1,
@@ -570,7 +607,7 @@ const styles = StyleSheet.create({
   dayContentExpanded: {
     alignItems: 'stretch',
     flex: 1,
-    gap: 4,
+    gap: 5,
   },
   dayCell: {
     width: 27,
@@ -581,24 +618,32 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   dayCellExpanded: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignSelf: 'flex-start',
   },
   expandedEvents: {
     flex: 1,
-    gap: 4,
+    gap: 5,
+    minHeight: 0,
   },
   expandedEventCard: {
     borderLeftWidth: 3,
-    paddingLeft: 4,
+    paddingLeft: 5,
     paddingVertical: 2,
   },
+  expandedEventCardMain: {
+    paddingVertical: 3,
+  },
   expandedEventTitle: {
-    fontSize: FontSize.micro,
-    lineHeight: 12,
+    fontSize: FontSize.caption,
+    lineHeight: 15,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+  },
+  expandedEventTitleMain: {
+    fontSize: FontSize.small,
+    lineHeight: 17,
   },
   expandedEmptySpace: {
     flex: 1,
@@ -620,6 +665,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: FontSize.micro,
     lineHeight: 14,
+  },
+  dayTextExpanded: {
+    fontSize: FontSize.caption,
+    lineHeight: 15,
   },
   sundayText: {
     color: '#E5484D',
@@ -675,9 +724,17 @@ const styles = StyleSheet.create({
     lineHeight: 12,
     fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
-  todayButton: {
+  backToMonthButton: {
     alignSelf: 'center',
+    borderRadius: BorderRadius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+  },
+  backToMonthLabel: {
+    color: Accent.green,
+    fontSize: FontSize.caption,
+    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   footerNote: {
     textAlign: 'center',

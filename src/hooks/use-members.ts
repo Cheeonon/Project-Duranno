@@ -8,6 +8,7 @@ import type {
   ChurchPosition,
   Gender,
   Member,
+  MemberMinistry,
   MemberPermission,
 } from '@/types/member';
 
@@ -18,20 +19,31 @@ type MembersState = {
 };
 
 const SELECT_COLUMNS =
-  'id, name_ko, name_en, dob, gender, phone, address, household_head_id, permission, position, ' +
+  'id, name_ko, first_name_en, last_name_en, dob, gender, phone, household_head_id, permission, position, ' +
+  'is_married, ministry, introducer_id, introducer:members!introducer_id(name_ko), ' +
+  'address_street, address_unit, address_city, address_province, address_postal_code, ' +
   'cell_leader_id, cell_leader:members!cell_leader_id(name_ko), photo_path';
 
 type MemberRow = {
   id: string;
   name_ko: string;
-  name_en: string | null;
+  first_name_en: string | null;
+  last_name_en: string | null;
   household_head_id: string | null;
   permission: string;
   position: string;
   dob: string;
   phone: string | null;
-  address: string | null;
+  address_street: string | null;
+  address_unit: string | null;
+  address_city: string | null;
+  address_province: string | null;
+  address_postal_code: string | null;
   gender: string;
+  is_married: boolean;
+  ministry: string;
+  introducer_id: string | null;
+  introducer: { name_ko: string } | { name_ko: string }[] | null;
   cell_leader_id: string | null;
   cell_leader: { name_ko: string } | { name_ko: string }[] | null;
   photo_path: string | null;
@@ -47,11 +59,13 @@ type HistoryRow = {
 
 function mapRow(row: MemberRow, previousCellGroups: CellGroupMembership[]): Member {
   const leader = Array.isArray(row.cell_leader) ? row.cell_leader[0] : row.cell_leader;
+  const introducer = Array.isArray(row.introducer) ? row.introducer[0] : row.introducer;
 
   return {
     id: row.id,
     nameKo: row.name_ko,
-    nameEn: row.name_en ?? '',
+    firstNameEn: row.first_name_en ?? '',
+    lastNameEn: row.last_name_en ?? '',
     householdHeadId: row.household_head_id,
     permission: row.permission as MemberPermission,
     position: row.position as ChurchPosition,
@@ -59,9 +73,17 @@ function mapRow(row: MemberRow, previousCellGroups: CellGroupMembership[]): Memb
     phone: row.phone ?? '',
     cellLeaderId: row.cell_leader_id,
     cellGroup: `${leader ? leader.name_ko : row.name_ko} 셀`,
+    introducerId: row.introducer_id,
+    introducerName: introducer?.name_ko ?? null,
     previousCellGroups,
-    address: row.address ?? '',
+    addressStreet: row.address_street ?? '',
+    addressUnit: row.address_unit ?? '',
+    addressCity: row.address_city ?? '',
+    addressProvince: row.address_province ?? '',
+    addressPostalCode: row.address_postal_code ?? '',
     gender: row.gender as Gender,
+    isMarried: Boolean(row.is_married),
+    ministry: (row.ministry === '청년부' ? '청년부' : '장년부') as MemberMinistry,
     photoPath: row.photo_path,
   };
 }
@@ -136,11 +158,18 @@ export function useMembers() {
       };
     });
 
+    // Paint the list immediately — signed photo URLs can arrive a moment later.
+    setState({ members: withHistory, isLoading: false, error: null });
+
     const photoPaths = withHistory
       .map((member) => member.photoPath)
       .filter((path): path is string => Boolean(path));
-    const photoUrlByPath = await signMemberPhotoUrls(photoPaths);
 
+    if (photoPaths.length === 0) {
+      return;
+    }
+
+    const photoUrlByPath = await signMemberPhotoUrls(photoPaths);
     const withPhotos = withHistory.map((member) => ({
       ...member,
       photoUrl: member.photoPath ? (photoUrlByPath.get(member.photoPath) ?? null) : null,

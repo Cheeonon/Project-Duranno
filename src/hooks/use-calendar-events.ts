@@ -32,7 +32,9 @@ export function useCalendarEvents() {
     }
 
     setState({
-      events: (data as CalendarEventRow[]).map(mapCalendarEventRow),
+      events: (data as CalendarEventRow[])
+        .map(mapCalendarEventRow)
+        .filter((event): event is NonNullable<typeof event> => event != null),
       isLoading: false,
       error: null,
     });

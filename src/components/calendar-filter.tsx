@@ -5,14 +5,20 @@ import { ThemedView } from '@/components/themed-view';
 import { Accent, BorderRadius, FontSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export type CalendarFilterCategory = 'birthdays' | 'events';
+export type CalendarFilterCategory = 'youthBirthdays' | 'adultBirthdays' | 'events';
 
 export const CALENDAR_FILTER_OPTIONS = [
   {
-    id: 'birthdays' as const,
-    label: '생일자',
+    id: 'youthBirthdays' as const,
+    label: '청년부 생일자',
     color: '#F472B6',
-    description: '성도 생일 일정',
+    description: '청년부 성도 생일',
+  },
+  {
+    id: 'adultBirthdays' as const,
+    label: '장년부 생일자',
+    color: '#A78BFA',
+    description: '장년부 성도 생일',
   },
   {
     id: 'events' as const,
@@ -20,6 +26,12 @@ export const CALENDAR_FILTER_OPTIONS = [
     color: '#3B82F6',
     description: '예배·행사 일정',
   },
+];
+
+export const DEFAULT_CALENDAR_FILTERS: CalendarFilterCategory[] = [
+  'youthBirthdays',
+  'adultBirthdays',
+  'events',
 ];
 
 type CalendarFilterSectionProps = {
@@ -106,10 +118,13 @@ const styles = StyleSheet.create({
   },
   optionsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.one,
   },
   optionPressable: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '30%',
+    minWidth: 96,
   },
   optionCard: {
     flexDirection: 'row',
