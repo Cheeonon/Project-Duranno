@@ -4,7 +4,8 @@ import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } f
 import { MemberAvatar } from '@/components/member-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { Accent, BorderRadius, FontSize, KoreanFont, Shadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 import { useAttendance } from '@/hooks/use-attendance';
@@ -193,6 +194,7 @@ export function AttendancePanel() {
         </Pressable>
       </View>
 
+      <ScrollView style={styles.tableVerticalScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
       <View style={styles.tableWrapper}>
         <ScrollView
           horizontal
@@ -299,6 +301,7 @@ export function AttendancePanel() {
           </View>
         )}
       </View>
+      </ScrollView>
 
       <ThemedText type="code" themeColor="textSecondary" style={styles.demoNote}>
         클릭으로 출석 체크 · 길게 눌러 결석 사유 입력
@@ -317,7 +320,12 @@ export function AttendancePanel() {
             onPress={closeAbsenceEditor}
             style={StyleSheet.absoluteFill}
           />
-          <View style={[styles.modalCard, { backgroundColor: theme.background }]}>
+          <View
+            style={[
+              styles.modalCard,
+              { backgroundColor: theme.background },
+              isDark ? Shadow.raised.dark : Shadow.raised.light,
+            ]}>
             <ThemedText type="smallBold" style={styles.modalTitle}>
               결석 사유
             </ThemedText>
@@ -348,24 +356,12 @@ export function AttendancePanel() {
             />
 
             <View style={styles.modalActions}>
-              <Pressable
-                onPress={closeAbsenceEditor}
-                style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  취소
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                onPress={saveAbsenceReason}
-                style={({ pressed }) => [
-                  styles.modalButton,
-                  styles.modalButtonPrimary,
-                  pressed && styles.pressed,
-                ]}>
-                <ThemedText type="smallBold" style={styles.modalButtonPrimaryText}>
-                  저장
-                </ThemedText>
-              </Pressable>
+              <Button variant="ghost" onPress={closeAbsenceEditor}>
+                취소
+              </Button>
+              <Button variant="primary" onPress={saveAbsenceReason}>
+                저장
+              </Button>
             </View>
           </View>
         </View>
@@ -376,17 +372,18 @@ export function AttendancePanel() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     borderRadius: BorderRadius.md,
     padding: Spacing.three,
     gap: Spacing.two,
   },
   headerTitle: {
     fontSize: FontSize.small,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   headerSubtitle: {
     fontSize: FontSize.caption,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   monthNavigator: {
     flexDirection: 'row',
@@ -398,7 +395,7 @@ const styles = StyleSheet.create({
     minWidth: 96,
     textAlign: 'center',
     fontSize: FontSize.caption,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   navButton: {
     width: 26,
@@ -406,6 +403,9 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tableVerticalScroll: {
+    flex: 1,
   },
   tableWrapper: {
     alignSelf: 'stretch',
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: FontSize.caption,
     textAlign: 'center',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   sundayLabel: {
     fontSize: FontSize.micro,
@@ -476,11 +476,11 @@ const styles = StyleSheet.create({
   },
   memberName: {
     fontSize: FontSize.caption,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   memberRole: {
     fontSize: FontSize.micro,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   attendanceCell: {
     width: 52,
@@ -530,40 +530,28 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: FontSize.body,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   modalSubtitle: {
     fontSize: FontSize.caption,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   reasonInput: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: Spacing.two,
   },
-  modalButton: {
-    borderRadius: BorderRadius.sm,
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-  },
-  modalButtonPrimary: {
-    backgroundColor: Accent.green,
-  },
-  modalButtonPrimaryText: {
-    color: '#FFFFFF',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
-  },
   demoNote: {
     fontSize: FontSize.micro,
     textAlign: 'center',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   pressed: {
     opacity: 0.7,

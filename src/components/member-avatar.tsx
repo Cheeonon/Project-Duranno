@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 
 type MemberAvatarProps = {
   uri?: string | null;
@@ -32,11 +31,11 @@ export function MemberAvatar({ uri, nameKo, size, style }: MemberAvatarProps) {
           onError={() => setHasError(true)}
         />
       ) : (
-        <ThemedView type="backgroundElement" style={[StyleSheet.absoluteFill, styles.fallback]}>
-          <ThemedText type="smallBold" style={{ fontSize: size * 0.4 }}>
+        <View style={[StyleSheet.absoluteFill, styles.fallback]}>
+          <ThemedText type="smallBold" style={[styles.fallbackText, { fontSize: size * 0.4 }]}>
             {nameKo.charAt(0)}
           </ThemedText>
-        </ThemedView>
+        </View>
       )}
     </View>
   );
@@ -45,9 +44,13 @@ export function MemberAvatar({ uri, nameKo, size, style }: MemberAvatarProps) {
 const styles = StyleSheet.create({
   circle: {
     overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
   },
   fallback: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  fallbackText: {
+    color: '#333333',
   },
 });

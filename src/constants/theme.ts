@@ -42,7 +42,71 @@ export const Accent = {
   greenMuted: '#16A34A',
 } as const;
 
+/**
+ * Green-based gradients (kept on the same ramp as `Accent`, not a new hue).
+ * `primary` is for saturated CTA pills; `highlight` is a much softer wash
+ * for full-card backgrounds where `primary` would crush text contrast.
+ */
+export const Gradient = {
+  primary: {
+    light: ['#4ADE80', '#16A34A'],
+    dark: ['#22C55E', '#15803D'],
+  },
+  highlight: {
+    light: ['#EAF6EC', '#DCEFE1'],
+    dark: ['#26312A', '#1E2921'],
+  },
+} as const;
+
+/**
+ * Real elevation shadows — replaces the inset-`boxShadow` hack duplicated
+ * across card components. `card` for inline sections, `raised` for
+ * floating/modal elements. react-native-web maps these to a real CSS
+ * `box-shadow`, so no `Platform.select` split is needed.
+ */
+export const Shadow = {
+  card: {
+    light: {
+      shadowColor: '#1B2E20',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 3,
+    },
+    dark: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.28,
+      shadowRadius: 12,
+      elevation: 3,
+    },
+  },
+  raised: {
+    light: {
+      shadowColor: '#1B2E20',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.14,
+      shadowRadius: 16,
+      elevation: 6,
+    },
+    dark: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.36,
+      shadowRadius: 16,
+      elevation: 6,
+    },
+  },
+} as const;
+
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+
+/**
+ * Korean-first font stack, centralized — was copy-pasted inline across
+ * nearly every screen's StyleSheet. Distinct from `Fonts.sans` below (which
+ * is Platform.select/web-CSS-var driven and Latin-first on web).
+ */
+export const KoreanFont = 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif';
 
 export const Fonts = Platform.select({
   ios: {
@@ -84,6 +148,8 @@ export const BorderRadius = {
   md: 8,
   lg: 12,
   xl: 16,
+  /** Pill / circle radius — RN clamps to half of width/height automatically. */
+  full: 999,
 } as const;
 
 // Standard type scale. 11px is the accepted floor for legible auxiliary text

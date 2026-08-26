@@ -1,23 +1,124 @@
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { MemberAvatar } from '@/components/member-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { StackScreenEnter } from '@/components/stack-screen-enter';
 import { TextSizeControl } from '@/components/text-size-control';
-import { BorderRadius, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { Accent, BorderRadius, BottomTabInset, KoreanFont, MaxContentWidth, Shadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { deleteMemberPhoto, uploadMemberPhoto } from '@/lib/member-photos';
+import { supabase } from '@/lib/supabase';
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const { profile, signOut, changePassword } = useAuth();
+  const isDark = useColorScheme() === 'dark';
+  const { profile, signOut, changePassword, refreshProfile } = useAuth();
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoRemoving, setPhotoRemoving] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+
+  const pickAndChangePhoto = async () => {
+    if (!profile) {
+      return;
+    }
+
+    setPhotoError('');
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setPhotoError('사진 보관함 접근 권한이 필요합니다.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (result.canceled || result.assets.length === 0) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    setPhotoUploading(true);
+    try {
+      const { data: currentMember } = await supabase
+        .from('members')
+        .select('photo_path')
+        .eq('id', profile.memberId)
+        .single();
+
+      const newPath = await uploadMemberPhoto(profile.memberId, asset.uri, asset.mimeType ?? 'image/jpeg');
+
+      const { error: updateError } = await supabase
+        .from('members')
+        .update({ photo_path: newPath })
+        .eq('id', profile.memberId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      if (currentMember?.photo_path) {
+        deleteMemberPhoto(currentMember.photo_path);
+      }
+
+      await refreshProfile();
+    } catch (uploadError) {
+      setPhotoError(uploadError instanceof Error ? uploadError.message : '사진 업로드에 실패했습니다.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const removePhoto = async () => {
+    if (!profile) {
+      return;
+    }
+
+    setPhotoError('');
+    setPhotoRemoving(true);
+    try {
+      const { data: currentMember } = await supabase
+        .from('members')
+        .select('photo_path')
+        .eq('id', profile.memberId)
+        .single();
+
+      const { error: updateError } = await supabase
+        .from('members')
+        .update({ photo_path: null })
+        .eq('id', profile.memberId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      if (currentMember?.photo_path) {
+        deleteMemberPhoto(currentMember.photo_path);
+      }
+
+      await refreshProfile();
+    } catch (removeError) {
+      setPhotoError(removeError instanceof Error ? removeError.message : '사진 삭제에 실패했습니다.');
+    } finally {
+      setPhotoRemoving(false);
+    }
+  };
 
   const resetPasswordForm = () => {
     setNewPassword('');
@@ -97,27 +198,61 @@ export default function SettingsScreen() {
             계정과 앱 설정을 관리할 수 있습니다.
           </ThemedText>
 
-          <ThemedView type="backgroundElement" style={styles.sectionCard}>
+          <ThemedView
+            type="backgroundElement"
+            style={[styles.sectionCard, isDark ? Shadow.card.dark : Shadow.card.light]}>
             <ThemedText type="smallBold" style={styles.sectionTitle}>
               계정
             </ThemedText>
 
             {profile ? (
               <>
+                <View style={styles.photoRow}>
+                  <MemberAvatar uri={profile.photoUrl} nameKo={profile.nameKo} size={72} />
+                  <View style={styles.photoActions}>
+                    <Pressable
+                      disabled={photoUploading || photoRemoving}
+                      onPress={pickAndChangePhoto}
+                      style={({ pressed }) => [
+                        styles.photoButton,
+                        { borderColor: theme.border },
+                        pressed && styles.pressed,
+                      ]}>
+                      <ThemedText type="small">
+                        {photoUploading ? '업로드 중...' : profile.photoUrl ? '사진 변경' : '사진 추가'}
+                      </ThemedText>
+                    </Pressable>
+                    {profile.photoUrl ? (
+                      <Pressable
+                        disabled={photoUploading || photoRemoving}
+                        onPress={removePhoto}
+                        style={({ pressed }) => [
+                          styles.photoButton,
+                          { borderColor: theme.border },
+                          pressed && styles.pressed,
+                        ]}>
+                        <ThemedText type="small" style={styles.errorText}>
+                          {photoRemoving ? '삭제 중...' : '사진 삭제'}
+                        </ThemedText>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </View>
+                {photoError ? (
+                  <ThemedText type="small" style={styles.errorText}>
+                    {photoError}
+                  </ThemedText>
+                ) : null}
+
                 <ThemedText type="smallBold" style={styles.accountName}>
                   {profile.nameKo}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.accountRole}>
                   {profile.position} · {profile.permission}
                 </ThemedText>
-                <Pressable
-                  accessibilityLabel="비밀번호 변경"
-                  onPress={openPasswordModal}
-                  style={({ pressed }) => [styles.changePasswordButton, pressed && styles.pressed]}>
-                  <ThemedText type="smallBold" style={styles.changePasswordButtonText}>
-                    비밀번호 변경
-                  </ThemedText>
-                </Pressable>
+                <Button variant="primary" fullWidth style={styles.actionSpacing} onPress={openPasswordModal}>
+                  비밀번호 변경
+                </Button>
                 <Pressable
                   accessibilityLabel="로그아웃"
                   onPress={() => signOut()}
@@ -134,7 +269,9 @@ export default function SettingsScreen() {
             )}
           </ThemedView>
 
-          <ThemedView type="backgroundElement" style={styles.sectionCard}>
+          <ThemedView
+            type="backgroundElement"
+            style={[styles.sectionCard, isDark ? Shadow.card.dark : Shadow.card.light]}>
             <ThemedText type="smallBold" style={styles.sectionTitle}>
               앱 설정
             </ThemedText>
@@ -155,7 +292,11 @@ export default function SettingsScreen() {
         onRequestClose={closePasswordModal}>
         <Pressable style={styles.modalOverlay} onPress={closePasswordModal}>
           <View
-            style={[styles.modalCard, { backgroundColor: theme.background }]}
+            style={[
+              styles.modalCard,
+              { backgroundColor: theme.background },
+              isDark ? Shadow.raised.dark : Shadow.raised.light,
+            ]}
             onStartShouldSetResponder={() => true}>
             <ThemedText type="smallBold" style={styles.modalTitle}>
               비밀번호 변경
@@ -234,24 +375,12 @@ export default function SettingsScreen() {
             )}
 
             <View style={styles.modalActions}>
-              <Pressable
-                onPress={closePasswordModal}
-                style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  취소
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                onPress={handleChangePassword}
-                style={({ pressed }) => [
-                  styles.modalButton,
-                  styles.modalButtonPrimary,
-                  pressed && styles.pressed,
-                ]}>
-                <ThemedText type="smallBold" style={styles.modalButtonPrimaryText}>
-                  {passwordSuccess ? '확인' : '변경'}
-                </ThemedText>
-              </Pressable>
+              <Button variant="ghost" onPress={closePasswordModal}>
+                취소
+              </Button>
+              <Button variant="primary" onPress={handleChangePassword}>
+                {passwordSuccess ? '확인' : '변경'}
+              </Button>
             </View>
           </View>
         </Pressable>
@@ -282,7 +411,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   description: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   sectionCard: {
     borderRadius: BorderRadius.lg,
@@ -290,13 +419,27 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   sectionTitle: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
+  },
+  photoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  photoActions: {
+    gap: Spacing.two,
+  },
+  photoButton: {
+    borderRadius: BorderRadius.sm,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   accountName: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   accountRole: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   settingRow: {
     flexDirection: 'row',
@@ -304,13 +447,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   settingRowLabel: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   fieldGroup: {
     gap: Spacing.one,
   },
   label: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   input: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -318,40 +461,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: 16,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   errorText: {
     color: '#EF4444',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   successText: {
-    color: '#22C55E',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    color: Accent.green,
+    fontFamily: KoreanFont,
   },
-  changePasswordButton: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    borderRadius: BorderRadius.md,
-    backgroundColor: '#22C55E',
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
+  actionSpacing: {
     marginTop: Spacing.two,
-  },
-  changePasswordButtonText: {
-    color: '#FFFFFF',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   logoutButton: {
     alignSelf: 'stretch',
     alignItems: 'center',
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.full,
     backgroundColor: '#EF4444',
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
   },
   logoutButtonText: {
     color: '#FFFFFF',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   modalOverlay: {
     flex: 1,
@@ -368,28 +501,16 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   modalTitle: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   modalSubtitle: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: Spacing.two,
     marginTop: Spacing.one,
-  },
-  modalButton: {
-    borderRadius: BorderRadius.sm,
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-  },
-  modalButtonPrimary: {
-    backgroundColor: '#22C55E',
-  },
-  modalButtonPrimaryText: {
-    color: '#FFFFFF',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
   },
   pressed: {
     opacity: 0.7,

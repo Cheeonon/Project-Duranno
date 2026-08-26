@@ -11,7 +11,7 @@ import {
 import { TabScreenSlide } from '@/components/tab-screen-slide';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, KoreanFont, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
 import { useTheme } from '@/hooks/use-theme';
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   },
   centerText: {
     textAlign: 'center',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   calendarSection: {
     flex: 1,

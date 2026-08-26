@@ -11,12 +11,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
 import { getUpcomingEvents, type UpcomingEvent } from '@/lib/calendar-events';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { Accent, BorderRadius, FontSize, KoreanFont, Shadow, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
 function getCategoryColor(category: UpcomingEvent['category']) {
-  return CALENDAR_FILTER_OPTIONS.find((option) => option.id === category)?.color ?? '#22C55E';
+  return CALENDAR_FILTER_OPTIONS.find((option) => option.id === category)?.color ?? Accent.green;
 }
 
 function getCategoryLabel(category: UpcomingEvent['category']) {
@@ -78,9 +78,7 @@ export function UpcomingEventsSection({
   };
 
   return (
-    <ThemedView
-      type="backgroundSelected"
-      style={[styles.wrapper, isDark ? styles.wrapperShadowDark : styles.wrapperShadowLight]}>
+    <ThemedView type="backgroundSelected" style={styles.wrapper}>
       <Pressable
         ref={headerRef}
         accessibilityLabel={`Upcoming Events ${isOpen ? '접기' : '펼치기'}`}
@@ -101,7 +99,7 @@ export function UpcomingEventsSection({
 
         <ThemedView
           type="background"
-          style={[styles.toggleBadge, isOpen && styles.toggleBadgeOpen]}>
+          style={[styles.toggleBadge, isOpen && (isDark ? Shadow.raised.dark : Shadow.raised.light)]}>
           <ThemedText type="small" themeColor="textSecondary">
             {isOpen ? '접기' : `${upcomingEvents.length}건`}
           </ThemedText>
@@ -111,10 +109,7 @@ export function UpcomingEventsSection({
       <CollapsiblePanel isOpen={isOpen}>
         <ThemedView
           type="backgroundElement"
-          style={[
-            styles.contentBox,
-            isDark ? styles.contentBoxShadowDark : styles.contentBoxShadowLight,
-          ]}>
+          style={styles.contentBox}>
           <CalendarFilterSection
             layout="panel"
             selectedFilters={selectedFilters}
@@ -171,12 +166,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     padding: Spacing.three,
   },
-  wrapperShadowLight: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.3)', inset: true }],
-  },
-  wrapperShadowDark: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.06)', inset: true }],
-  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -188,12 +177,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   title: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   previewText: {
     fontSize: FontSize.micro,
     lineHeight: 13,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   previewHidden: {
     opacity: 0,
@@ -203,22 +192,10 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.half,
     paddingHorizontal: Spacing.two,
   },
-  toggleBadgeOpen: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-  },
   contentBox: {
     borderRadius: BorderRadius.lg,
     padding: Spacing.two,
     gap: Spacing.two,
-  },
-  contentBoxShadowLight: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.3)', inset: true }],
-  },
-  contentBoxShadowDark: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.06)', inset: true }],
   },
   eventsList: {},
   eventCard: {
@@ -234,27 +211,27 @@ const styles = StyleSheet.create({
   eventDate: {
     flex: 1,
     fontSize: FontSize.micro,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   categoryBadge: {
-    borderRadius: 3,
-    paddingHorizontal: 6,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: 8,
     paddingVertical: 2,
   },
   categoryBadgeText: {
     color: '#FFFFFF',
     fontSize: FontSize.micro,
     fontWeight: '700',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   eventTitle: {
     fontSize: FontSize.caption,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   eventDetail: {
     fontSize: FontSize.micro,
     lineHeight: 13,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   emptyState: {
     borderRadius: BorderRadius.sm,
@@ -263,7 +240,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: FontSize.micro,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   pressed: {
     opacity: 0.7,

@@ -4,13 +4,11 @@ import { ScrollView, StyleSheet, TextInput, View, type ScrollView as ScrollViewT
 import { MemberAvatar } from '@/components/member-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { BorderRadius, FontSize, KoreanFont, Spacing } from '@/constants/theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
 import { formatMemberDob, searchChurchMembers } from '@/lib/member-search';
-
-const RESULTS_MAX_HEIGHT = 320;
 
 type MemberSearchPanelProps = {
   scrollRef?: RefObject<ScrollViewType | null>;
@@ -76,7 +74,10 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
         showsVerticalScrollIndicator={false}>
         {results.length > 0 ? (
           results.map((member) => (
-            <ThemedView key={member.id} type="background" style={[styles.resultCard, { borderColor: theme.border }]}>
+            <ThemedView
+              key={member.id}
+              type="background"
+              style={styles.resultCard}>
               <View style={styles.resultHeader}>
                 <View style={styles.resultNameRow}>
                   <MemberAvatar uri={member.photoUrl} nameKo={member.nameKo} size={44} />
@@ -123,40 +124,40 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: BorderRadius.md,
+    flex: 1,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.three,
     gap: Spacing.two,
   },
   headerTitle: {
     fontSize: FontSize.small,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   headerSubtitle: {
     fontSize: FontSize.caption,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   searchInput: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   resultCount: {
     fontSize: FontSize.micro,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   resultsScroll: {
-    height: RESULTS_MAX_HEIGHT,
+    flex: 1,
   },
   results: {
     gap: Spacing.two,
   },
   resultCard: {
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.three,
     gap: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
   },
   resultHeader: {
     flexDirection: 'row',
@@ -172,11 +173,11 @@ const styles = StyleSheet.create({
   },
   memberName: {
     fontSize: FontSize.body,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   memberRole: {
     fontSize: FontSize.caption,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   resultDetails: {
     gap: 4,
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: FontSize.caption,
     lineHeight: 17,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   emptyState: {
     borderRadius: BorderRadius.sm,
@@ -193,11 +194,11 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: FontSize.caption,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   demoNote: {
     fontSize: FontSize.micro,
     textAlign: 'center',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
 });

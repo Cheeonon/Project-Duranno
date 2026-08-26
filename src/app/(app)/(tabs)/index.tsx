@@ -1,23 +1,35 @@
-import { Link } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedIcon } from '@/components/animated-icon';
 import { AnimatedUserName } from '@/components/animated-user-name';
 import { AttendancePanel } from '@/components/attendance-panel';
+import { CALENDAR_FILTER_OPTIONS } from '@/components/calendar-filter';
+import { PANEL_ANIMATION_DURATION } from '@/components/collapsible-panel';
+import { ExpandablePanel } from '@/components/expandable-panel';
 import { MemberSearchPanel } from '@/components/member-search-panel';
-import { HintRow } from '@/components/hint-row';
 import { TabScreenSlide } from '@/components/tab-screen-slide';
-import { ToggleHintRow } from '@/components/toggle-hint-row';
-import { UpcomingEventsSection } from '@/components/upcoming-events-section';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BorderRadius, BottomTabInset, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import {
+  Accent,
+  BorderRadius,
+  BottomTabInset,
+  FontSize,
+  KoreanFont,
+  MaxContentWidth,
+  Spacing,
+  TopTabInset,
+} from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useCalendarEvents } from '@/hooks/use-calendar-events';
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
 import { useTheme } from '@/hooks/use-theme';
+import { getUpcomingEvents } from '@/lib/calendar-events';
 
 // The greeting is meant to wrap to exactly two lines by default. At the
 // fixed `hero` size that only holds on a standard phone column (~390px+) —
@@ -26,6 +38,12 @@ import { useTheme } from '@/hooks/use-theme';
 const GREETING_MIN_WIDTH = 340;
 const GREETING_MAX_WIDTH = 420;
 const GREETING_MIN_FONT_SIZE = 18;
+
+type QuickActionPanel = 'attendance' | 'memberSearch' | 'nextEvent';
+
+// Shrunk on native phones so the quick-action row (icon + caption) doesn't
+// get clipped at the bottom of the hero fold — web has more headroom.
+const QUICK_ACTION_ICON_SIZE = Platform.select({ web: 56, default: 46 }) ?? 56;
 
 function getGreetingFontSize(width: number) {
   if (width <= GREETING_MIN_WIDTH) {
@@ -41,17 +59,27 @@ function getGreetingFontSize(width: number) {
 
 export default function HomeScreen() {
   const theme = useTheme();
-  const isDark = useColorScheme() === 'dark';
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const greetingFontSize = getGreetingFontSize(width);
+  const heroBlockMinHeight = Math.max(
+    0,
+    height - insets.top - insets.bottom - TopTabInset - BottomTabInset - Spacing.two - Spacing.four,
+  );
   const scrollRef = useRef<ScrollView>(null);
-  const { handleScroll, preserveScrollPosition, collapseWithPreservedPosition, scrollOffsetRef } =
-    usePreservedCollapse(scrollRef);
-  const [showAttendance, setShowAttendance] = useState(false);
-  const [showMemberSearch, setShowMemberSearch] = useState(false);
+  const { handleScroll, preserveScrollPosition } = usePreservedCollapse(scrollRef);
+  const [activePanel, setActivePanel] = useState<QuickActionPanel | null>(null);
+  const pendingSwitchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [quickActionsHeight, setQuickActionsHeight] = useState(0);
+  // Fixed proportion of the viewport (like a CSS `70vh`) so all three
+  // quick-action panels always line up at the same top/bottom.
+  const panelHeight = height * 0.7;
   const { profile, refreshProfile } = useAuth();
+  const { events } = useCalendarEvents();
+
+  const upcomingEvents = useMemo(() => getUpcomingEvents(events, new Date()), [events]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -62,6 +90,41 @@ export default function HomeScreen() {
       setRefreshing(false);
     }
   }, [refreshProfile]);
+
+  const iconColor = theme.text;
+
+  useEffect(() => {
+    return () => {
+      if (pendingSwitchRef.current) {
+        clearTimeout(pendingSwitchRef.current);
+      }
+    };
+  }, []);
+
+  const togglePanel = (panel: QuickActionPanel) => {
+    if (pendingSwitchRef.current) {
+      clearTimeout(pendingSwitchRef.current);
+      pendingSwitchRef.current = null;
+    }
+
+    if (activePanel === panel) {
+      setActivePanel(null);
+      return;
+    }
+
+    if (activePanel === null) {
+      setActivePanel(panel);
+      return;
+    }
+
+    // Let the currently open panel finish sliding down before the new one
+    // opens, instead of collapsing and expanding at the same time.
+    setActivePanel(null);
+    pendingSwitchRef.current = setTimeout(() => {
+      pendingSwitchRef.current = null;
+      setActivePanel(panel);
+    }, PANEL_ANIMATION_DURATION);
+  };
 
   return (
     <TabScreenSlide tabIndex={0}>
@@ -78,7 +141,7 @@ export default function HomeScreen() {
               styles.scrollContent,
               {
                 paddingTop: Spacing.two,
-                paddingBottom: BottomTabInset + Spacing.five,
+                paddingBottom: BottomTabInset + Spacing.two,
               },
             ]}
             showsVerticalScrollIndicator={false}
@@ -90,71 +153,124 @@ export default function HomeScreen() {
                 colors={[theme.textSecondary]}
               />
             }>
-            <ThemedView style={styles.heroSection}>
-              <AnimatedIcon />
-              <ThemedText
-                type="subtitle"
-                style={[
-                  styles.greeting,
-                  { fontSize: greetingFontSize, lineHeight: Math.round(greetingFontSize * 1.36) },
-                ]}>
-                소중한{' '}
-                <AnimatedUserName name={profile?.nameKo ?? '성도'} />
-                님,{'\n'}
-                오늘도 교회를 위해 함께 해주셔서 감사해요.
-              </ThemedText>
-            </ThemedView>
+            <View style={[styles.heroActionsBlock, { minHeight: heroBlockMinHeight }]}>
+              <ThemedView style={styles.heroSection}>
+                <AnimatedIcon />
+                <ThemedText
+                  type="display"
+                  style={[
+                    styles.greeting,
+                    { fontSize: greetingFontSize, lineHeight: Math.round(greetingFontSize * 1.36) },
+                  ]}>
+                  소중한{' '}
+                  <AnimatedUserName name={profile?.nameKo ?? '성도'} />
+                  님,{'\n'}
+                  오늘도 교회를 위해 함께 해주셔서 감사해요.
+                </ThemedText>
+              </ThemedView>
 
-            <ThemedView
-              type="backgroundElement"
-              style={[
-                styles.stepContainer,
-                isDark ? styles.stepContainerShadowDark : styles.stepContainerShadowLight,
-              ]}>
-              <UpcomingEventsSection
-                key={`events-${refreshKey}`}
-                scrollRef={scrollRef}
-                collapseWithPreservedPosition={collapseWithPreservedPosition}
-              />
+              <View
+                style={[styles.panelOverlay, { bottom: quickActionsHeight + Spacing.three }]}
+                pointerEvents="box-none">
+                <ExpandablePanel isOpen={activePanel === 'nextEvent'} height={panelHeight}>
+                  <ThemedView type="backgroundSelected" style={styles.nextEventContainer}>
+                    <ThemedText type="smallBold" style={styles.koreanText}>
+                      다음 일정
+                    </ThemedText>
 
-              <ToggleHintRow
-                title="출결"
-                isOpen={showAttendance}
-                onToggle={() => setShowAttendance((current) => !current)}
-                hint={showAttendance ? '접기' : '셀그룹 보기'}
-                scrollRef={scrollRef}
-                collapseWithPreservedPosition={collapseWithPreservedPosition}
-                scrollOffsetRef={scrollOffsetRef}>
-                <AttendancePanel key={`attendance-${refreshKey}`} />
-              </ToggleHintRow>
+                    <ScrollView
+                      style={[styles.nextEventScroll, { height: panelHeight }]}
+                      contentContainerStyle={styles.nextEventList}
+                      nestedScrollEnabled
+                      showsVerticalScrollIndicator={false}>
+                      {upcomingEvents.length > 0 ? (
+                        upcomingEvents.map((event) => (
+                          <View key={event.id} style={styles.eventRow}>
+                            <View
+                              style={[
+                                styles.highlightDot,
+                                {
+                                  backgroundColor:
+                                    CALENDAR_FILTER_OPTIONS.find((option) => option.id === event.category)?.color ??
+                                    Accent.green,
+                                },
+                              ]}
+                            />
+                            <View style={styles.eventRowText}>
+                              <ThemedText type="smallBold" style={styles.koreanText}>
+                                {event.dateLabel} · {event.title}
+                              </ThemedText>
+                              {event.detail ? (
+                                <ThemedText type="small" themeColor="textSecondary" style={styles.koreanText}>
+                                  {event.detail}
+                                </ThemedText>
+                              ) : null}
+                            </View>
+                          </View>
+                        ))
+                      ) : (
+                        <ThemedText type="small" themeColor="textSecondary" style={styles.koreanText}>
+                          등록된 일정이 없어요.
+                        </ThemedText>
+                      )}
+                    </ScrollView>
 
-              <ToggleHintRow
-                title="교인 검색"
-                isOpen={showMemberSearch}
-                onToggle={() => setShowMemberSearch((current) => !current)}
-                hint={showMemberSearch ? '접기' : '검색하기'}
-                scrollRef={scrollRef}
-                collapseWithPreservedPosition={collapseWithPreservedPosition}
-                scrollOffsetRef={scrollOffsetRef}>
-                <MemberSearchPanel
-                  key={`search-${refreshKey}`}
-                  scrollRef={scrollRef}
-                  preserveScrollPosition={preserveScrollPosition}
+                    <Button variant="primary" fullWidth onPress={() => router.push('/explore')}>
+                      전체 일정 보기
+                    </Button>
+                  </ThemedView>
+                </ExpandablePanel>
+
+                <ExpandablePanel isOpen={activePanel === 'attendance'} height={panelHeight}>
+                  <AttendancePanel key={`attendance-${refreshKey}`} />
+                </ExpandablePanel>
+
+                <ExpandablePanel isOpen={activePanel === 'memberSearch'} height={panelHeight}>
+                  <MemberSearchPanel
+                    key={`search-${refreshKey}`}
+                    scrollRef={scrollRef}
+                    preserveScrollPosition={preserveScrollPosition}
+                  />
+                </ExpandablePanel>
+              </View>
+
+              <View
+                style={styles.quickActionsRow}
+                onLayout={(event) => setQuickActionsHeight(event.nativeEvent.layout.height)}>
+                <Button
+                  variant="icon"
+                  size={QUICK_ACTION_ICON_SIZE}
+                  accessibilityLabel="출결 보기"
+                  caption="출결"
+                  icon={<Ionicons name="checkmark-done-outline" size={24} color={iconColor} />}
+                  onPress={() => togglePanel('attendance')}
                 />
-              </ToggleHintRow>
-
-              <Link href="/members" asChild>
-                <Pressable>
-                  <HintRow title="성도관리" hint="바로가기" />
-                </Pressable>
-              </Link>
-
-              <Link href="/settings" asChild>
-                <Pressable>
-                  <HintRow title="설정" hint="바로가기" />
-                </Pressable>
-              </Link>
-            </ThemedView>
+                <Button
+                  variant="icon"
+                  size={QUICK_ACTION_ICON_SIZE}
+                  accessibilityLabel="교인 검색"
+                  caption="교인검색"
+                  icon={<Ionicons name="search-outline" size={22} color={iconColor} />}
+                  onPress={() => togglePanel('memberSearch')}
+                />
+                <Button
+                  variant="icon"
+                  size={QUICK_ACTION_ICON_SIZE}
+                  accessibilityLabel="다음 일정"
+                  caption="다음일정"
+                  icon={<Ionicons name="calendar-outline" size={22} color={iconColor} />}
+                  onPress={() => togglePanel('nextEvent')}
+                />
+                <Button
+                  variant="icon"
+                  size={QUICK_ACTION_ICON_SIZE}
+                  accessibilityLabel="성도관리로 이동"
+                  caption="성도관리"
+                  icon={<Ionicons name="people-outline" size={24} color={iconColor} />}
+                  onPress={() => router.push('/members')}
+                />
+              </View>
+            </View>
           </ScrollView>
         </SafeAreaView>
       </ThemedView>
@@ -180,28 +296,60 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     alignItems: 'stretch',
   },
+  heroActionsBlock: {
+    flexDirection: 'column',
+    position: 'relative',
+  },
+  panelOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    justifyContent: 'flex-end',
+    gap: Spacing.three,
+  },
   heroSection: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
-    gap: Spacing.four,
+    gap: 35,
   },
   greeting: {
     alignSelf: 'stretch',
     textAlign: 'left',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.two,
+  },
+  koreanText: {
+    fontFamily: KoreanFont,
+  },
+  nextEventContainer: {
+    flex: 1,
     borderRadius: BorderRadius.lg,
+    padding: Spacing.three,
+    gap: Spacing.two,
   },
-  stepContainerShadowLight: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.3)', inset: true }],
+  nextEventScroll: {},
+  nextEventList: {
+    gap: Spacing.three,
   },
-  stepContainerShadowDark: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.06)', inset: true }],
+  eventRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.one,
+  },
+  eventRowText: {
+    flex: 1,
+    gap: 2,
+  },
+  highlightDot: {
+    marginTop: 6,
+    width: 8,
+    height: 8,
+    borderRadius: BorderRadius.full,
   },
 });

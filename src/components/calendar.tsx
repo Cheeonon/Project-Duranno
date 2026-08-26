@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -8,8 +9,9 @@ import {
 } from '@/components/calendar-filter';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Button } from '@/components/ui/button';
 import { getDayEvents, getDayMarkers, type CalendarEventRecord } from '@/lib/calendar-events';
-import { Accent, BorderRadius, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Accent, BorderRadius, FontSize, KoreanFont, MaxContentWidth, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -31,7 +33,7 @@ type CalendarProps = {
 };
 
 function getMarkerColor(category: CalendarFilterCategory) {
-  return CALENDAR_FILTER_OPTIONS.find((option) => option.id === category)?.color ?? '#22C55E';
+  return CALENDAR_FILTER_OPTIONS.find((option) => option.id === category)?.color ?? Accent.green;
 }
 
 function isSameDay(a: Date, b: Date) {
@@ -186,25 +188,27 @@ export function Calendar({
   return (
     <ThemedView
       type="backgroundElement"
-      style={[styles.container, isDark ? styles.containerShadowDark : styles.containerShadowLight]}>
+      style={[styles.container, isDark ? Shadow.card.dark : Shadow.card.light]}>
       <View style={styles.header}>
-        <Pressable
+        <Button
+          variant="icon"
+          size={26}
           accessibilityLabel="이전 달"
           onPress={goToPrevMonth}
-          style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}>
-          <ThemedText type="smallBold">‹</ThemedText>
-        </Pressable>
+          icon={<Ionicons name="chevron-back" size={16} color={theme.text} />}
+        />
 
         <ThemedText type="smallBold" style={styles.monthLabel}>
           {viewDate.getFullYear()}년 {viewDate.getMonth() + 1}월
         </ThemedText>
 
-        <Pressable
+        <Button
+          variant="icon"
+          size={26}
           accessibilityLabel="다음 달"
           onPress={goToNextMonth}
-          style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}>
-          <ThemedText type="smallBold">›</ThemedText>
-        </Pressable>
+          icon={<Ionicons name="chevron-forward" size={16} color={theme.text} />}
+        />
       </View>
 
       {onToggleFilter && (
@@ -216,42 +220,30 @@ export function Calendar({
       )}
 
       <View ref={zoomAnchorRef} style={styles.zoomControls}>
-        <Pressable
-          accessibilityLabel="축소"
+        <Button
+          variant="icon"
+          size={24}
           disabled={!isExpanded}
+          accessibilityLabel="축소"
           onPress={collapseToCompact}
-          style={({ pressed }) => [
-            styles.zoomButton,
-            { borderColor: theme.border },
-            !isExpanded && styles.zoomButtonDisabled,
-            pressed && isExpanded && styles.pressed,
-          ]}>
-          <ThemedText type="smallBold" themeColor={isExpanded ? 'text' : 'textSecondary'}>
-            −
-          </ThemedText>
-        </Pressable>
+          icon={<Ionicons name="remove" size={14} color={isExpanded ? theme.text : theme.textSecondary} />}
+        />
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.zoomLabel}>
           {isExpanded ? '확대 보기' : '축소 보기'}
         </ThemedText>
 
-        <Pressable
-          accessibilityLabel="확대"
+        <Button
+          variant="icon"
+          size={24}
           disabled={isExpanded}
+          accessibilityLabel="확대"
           onPress={() => {
             setZoom('expanded');
             setSelectedDate(null);
           }}
-          style={({ pressed }) => [
-            styles.zoomButton,
-            { borderColor: theme.border },
-            isExpanded && styles.zoomButtonDisabled,
-            pressed && !isExpanded && styles.pressed,
-          ]}>
-          <ThemedText type="smallBold" themeColor={!isExpanded ? 'text' : 'textSecondary'}>
-            +
-          </ThemedText>
-        </Pressable>
+          icon={<Ionicons name="add" size={14} color={!isExpanded ? theme.text : theme.textSecondary} />}
+        />
       </View>
 
       <View style={styles.weekdayRow}>
@@ -402,26 +394,23 @@ export function Calendar({
       </View>
 
       {!isCurrentMonth && (
-        <Pressable onPress={goToToday} style={({ pressed }) => [styles.todayButton, pressed && styles.pressed]}>
-          <ThemedText type="link">오늘로 이동</ThemedText>
-        </Pressable>
+        <Button variant="ghost" style={styles.todayButton} onPress={goToToday}>
+          오늘로 이동
+        </Button>
       )}
 
       {selectedDate && visibleSelectedEvents.length > 0 ? (
-        <ThemedView type="backgroundSelected" style={styles.eventPanel}>
+        <ThemedView
+          type="backgroundSelected"
+          style={[styles.eventPanel, isDark ? Shadow.card.dark : Shadow.card.light]}>
           <View style={styles.eventPanelHeader}>
             <ThemedText type="smallBold" style={styles.eventPanelTitle}>
               {formatKoreanDate(selectedDate)}
             </ThemedText>
             {canManageEvents && (
-              <Pressable
-                accessibilityLabel="일정 추가"
-                onPress={() => onAddEvent?.(selectedDate)}
-                style={({ pressed }) => [styles.addEventButton, pressed && styles.pressed]}>
-                <ThemedText type="smallBold" themeColor="textSecondary">
-                  + 추가
-                </ThemedText>
-              </Pressable>
+              <Button variant="ghost" onPress={() => onAddEvent?.(selectedDate)}>
+                + 추가
+              </Button>
             )}
           </View>
           <View style={styles.eventList}>
@@ -482,12 +471,6 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
   },
-  containerShadowLight: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.3)', inset: true }],
-  },
-  containerShadowDark: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.06)', inset: true }],
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -499,33 +482,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.two,
   },
-  zoomButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  zoomButtonDisabled: {
-    opacity: 0.4,
-  },
   zoomLabel: {
     fontSize: FontSize.micro,
     minWidth: 52,
     textAlign: 'center',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   monthLabel: {
     fontSize: FontSize.caption,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
-  },
-  navButton: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontFamily: KoreanFont,
   },
   weekdayRow: {
     flexDirection: 'row',
@@ -598,7 +563,7 @@ const styles = StyleSheet.create({
   expandedEventTitle: {
     fontSize: FontSize.micro,
     lineHeight: 12,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   expandedEmptySpace: {
     flex: 1,
@@ -640,11 +605,7 @@ const styles = StyleSheet.create({
   },
   eventPanelTitle: {
     fontSize: FontSize.caption,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
-  },
-  addEventButton: {
-    paddingVertical: 2,
-    paddingHorizontal: Spacing.one,
+    fontFamily: KoreanFont,
   },
   eventList: {
     gap: Spacing.two,
@@ -664,26 +625,25 @@ const styles = StyleSheet.create({
   },
   eventCategoryLabel: {
     fontSize: FontSize.micro,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   eventTitle: {
     fontSize: FontSize.caption,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   eventDetail: {
     fontSize: FontSize.micro,
     lineHeight: 12,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   todayButton: {
     alignSelf: 'center',
-    paddingVertical: Spacing.one,
   },
   footerNote: {
     textAlign: 'center',
     fontSize: FontSize.micro,
     lineHeight: 12,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   pressed: {
     opacity: 0.7,

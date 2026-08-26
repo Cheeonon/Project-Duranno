@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { signMemberPhotoUrls } from '@/lib/member-photos';
 import { supabase } from '@/lib/supabase';
 import type { ChurchPosition, MemberPermission } from '@/types/member';
 
@@ -12,6 +13,7 @@ type Profile = {
   permission: MemberPermission;
   cellLeaderId: string | null;
   cellGroup: string;
+  photoUrl: string | null;
 };
 
 type AuthContextValue = {
@@ -33,9 +35,7 @@ async function fetchProfile(userId: string | undefined): Promise<Profile | null>
 
   const { data, error } = await supabase
     .from('profiles')
-    .select(
-      'id, member_id, members(name_ko, position, permission, cell_leader_id, cell_leader:members!cell_leader_id(name_ko))',
-    )
+    .select('id, member_id, members(name_ko, position, permission, cell_leader_id, photo_path)')
     .eq('id', userId)
     .single();
 
@@ -45,7 +45,24 @@ async function fetchProfile(userId: string | undefined): Promise<Profile | null>
     return null;
   }
 
-  const leader = Array.isArray(member.cell_leader) ? member.cell_leader[0] : member.cell_leader;
+  // Looked up as a separate query rather than embedded via
+  // `members!cell_leader_id(...)` — that self-referencing FK embed is ambiguous
+  // (members can also self-join via household_head_id/introducer_id) and
+  // PostgREST resolves it as the reverse (one-to-many "who reports to me")
+  // relationship instead of the forward one.
+  let leaderName = member.name_ko;
+  if (member.cell_leader_id) {
+    const { data: leaderRow } = await supabase
+      .from('members')
+      .select('name_ko')
+      .eq('id', member.cell_leader_id)
+      .single();
+    leaderName = leaderRow?.name_ko ?? member.name_ko;
+  }
+
+  const photoUrlByPath = member.photo_path
+    ? await signMemberPhotoUrls([member.photo_path])
+    : null;
 
   return {
     id: data.id,
@@ -54,7 +71,8 @@ async function fetchProfile(userId: string | undefined): Promise<Profile | null>
     position: member.position as ChurchPosition,
     permission: member.permission as MemberPermission,
     cellLeaderId: member.cell_leader_id,
-    cellGroup: `${leader ? leader.name_ko : member.name_ko} 셀`,
+    cellGroup: `${leaderName} 셀`,
+    photoUrl: member.photo_path ? (photoUrlByPath?.get(member.photo_path) ?? null) : null,
   };
 }
 

@@ -19,7 +19,7 @@ type MembersState = {
 
 const SELECT_COLUMNS =
   'id, name_ko, name_en, dob, gender, phone, address, household_head_id, permission, position, ' +
-  'cell_leader_id, cell_leader:members!cell_leader_id(name_ko), photo_path';
+  'cell_leader_id, photo_path';
 
 type MemberRow = {
   id: string;
@@ -33,7 +33,6 @@ type MemberRow = {
   address: string | null;
   gender: string;
   cell_leader_id: string | null;
-  cell_leader: { name_ko: string } | { name_ko: string }[] | null;
   photo_path: string | null;
 };
 
@@ -45,8 +44,16 @@ type HistoryRow = {
   cell_leader: { name_ko: string } | { name_ko: string }[] | null;
 };
 
-function mapRow(row: MemberRow, previousCellGroups: CellGroupMembership[]): Member {
-  const leader = Array.isArray(row.cell_leader) ? row.cell_leader[0] : row.cell_leader;
+function mapRow(
+  row: MemberRow,
+  previousCellGroups: CellGroupMembership[],
+  memberNameById: Map<string, string>,
+): Member {
+  // Looked up locally rather than embedded via `members!cell_leader_id(...)` — that
+  // self-referencing FK embed is ambiguous (members can also self-join via
+  // household_head_id/introducer_id) and PostgREST resolves it as the reverse
+  // (one-to-many "who reports to me") relationship instead of the forward one.
+  const leaderName = row.cell_leader_id ? (memberNameById.get(row.cell_leader_id) ?? row.name_ko) : row.name_ko;
 
   return {
     id: row.id,
@@ -58,7 +65,7 @@ function mapRow(row: MemberRow, previousCellGroups: CellGroupMembership[]): Memb
     dob: row.dob,
     phone: row.phone ?? '',
     cellLeaderId: row.cell_leader_id,
-    cellGroup: `${leader ? leader.name_ko : row.name_ko} 셀`,
+    cellGroup: `${leaderName} 셀`,
     previousCellGroups,
     address: row.address ?? '',
     gender: row.gender as Gender,
@@ -123,7 +130,7 @@ export function useMembers() {
       }
     }
 
-    const mapped = rows.map((row) => mapRow(row, historyByMemberId.get(row.id) ?? []));
+    const mapped = rows.map((row) => mapRow(row, historyByMemberId.get(row.id) ?? [], memberNameById));
     const cellLeaders = mapped.filter((member) => member.permission === '셀장');
 
     const withHistory = mapped.map((member) => {

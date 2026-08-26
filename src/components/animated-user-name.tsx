@@ -9,7 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { FontSize } from '@/constants/theme';
+import { FontSize, KoreanFont } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useHomeTextScale } from '@/contexts/home-text-scale';
 
@@ -59,6 +59,6 @@ export function AnimatedUserName({ name }: AnimatedUserNameProps) {
 const styles = StyleSheet.create({
   name: {
     fontWeight: '700',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
 });

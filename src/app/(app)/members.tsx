@@ -8,8 +8,10 @@ import { MemberAvatar } from '@/components/member-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { StackScreenEnter } from '@/components/stack-screen-enter';
-import { BorderRadius, BottomTabInset, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { BorderRadius, BottomTabInset, FontSize, MaxContentWidth, Shadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
 import { formatMemberDob, searchChurchMembers } from '@/lib/member-search';
@@ -82,6 +84,7 @@ function PreviousCellHistory({ history }: { history: CellGroupMembership[] }) {
 
 export default function MembersScreen() {
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
   const { profile } = useAuth();
   const { members, isLoading, error, refresh } = useMembers();
   const [query, setQuery] = useState('');
@@ -121,15 +124,19 @@ export default function MembersScreen() {
     setPhotoPreviewUri(null);
   };
 
-  const closeEdit = () => {
-    if (uploadedPhotoThisSession) {
-      deleteMemberPhoto(uploadedPhotoThisSession);
-    }
+  const resetEditState = () => {
     setEditingMember(null);
     setEditDraft(null);
     setEditError(null);
     setUploadedPhotoThisSession(null);
     setPhotoPreviewUri(null);
+  };
+
+  const closeEdit = () => {
+    if (uploadedPhotoThisSession) {
+      deleteMemberPhoto(uploadedPhotoThisSession);
+    }
+    resetEditState();
   };
 
   const pickAndUploadPhoto = async () => {
@@ -202,8 +209,7 @@ export default function MembersScreen() {
     if (editingMember?.photoPath && editingMember.photoPath !== editDraft.photoPath) {
       deleteMemberPhoto(editingMember.photoPath);
     }
-    setUploadedPhotoThisSession(null);
-    closeEdit();
+    resetEditState();
     refresh();
   };
 
@@ -296,7 +302,10 @@ export default function MembersScreen() {
             const hasAccount = accountMemberIds.has(member.id);
 
             return (
-              <ThemedView key={member.id} type="backgroundElement" style={styles.card}>
+              <ThemedView
+                key={member.id}
+                type="backgroundElement"
+                style={[styles.card, isDark ? Shadow.card.dark : Shadow.card.light]}>
                 <View style={styles.cardTopRow}>
                   <MemberAvatar uri={member.photoUrl} nameKo={member.nameKo} size={48} />
                   <View style={styles.cardHeader}>
@@ -361,7 +370,11 @@ export default function MembersScreen() {
       <Modal visible={editingMember !== null} transparent animationType="fade" onRequestClose={closeEdit}>
         <Pressable style={styles.modalOverlay} onPress={closeEdit}>
           <View
-            style={[styles.modalCard, { backgroundColor: theme.background }]}
+            style={[
+              styles.modalCard,
+              { backgroundColor: theme.background },
+              isDark ? Shadow.raised.dark : Shadow.raised.light,
+            ]}
             onStartShouldSetResponder={() => true}>
             <ScrollView contentContainerStyle={styles.modalScrollContent}>
               <ThemedText type="smallBold">성도 정보 수정</ThemedText>
@@ -503,25 +516,12 @@ export default function MembersScreen() {
               )}
 
               <View style={styles.modalActions}>
-                <Pressable
-                  onPress={closeEdit}
-                  style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    취소
-                  </ThemedText>
-                </Pressable>
-                <Pressable
-                  disabled={editSubmitting}
-                  onPress={saveEdit}
-                  style={({ pressed }) => [
-                    styles.modalButton,
-                    styles.modalButtonPrimary,
-                    pressed && styles.pressed,
-                  ]}>
-                  <ThemedText type="smallBold" style={{ color: '#FFFFFF' }}>
-                    {editSubmitting ? '저장 중...' : '저장'}
-                  </ThemedText>
-                </Pressable>
+                <Button variant="ghost" onPress={closeEdit}>
+                  취소
+                </Button>
+                <Button variant="primary" disabled={editSubmitting} loading={editSubmitting} onPress={saveEdit}>
+                  저장
+                </Button>
               </View>
             </ScrollView>
           </View>
@@ -531,7 +531,11 @@ export default function MembersScreen() {
       <Modal visible={issuingMember !== null} transparent animationType="fade" onRequestClose={closeIssue}>
         <Pressable style={styles.modalOverlay} onPress={closeIssue}>
           <View
-            style={[styles.modalCard, { backgroundColor: theme.background }]}
+            style={[
+              styles.modalCard,
+              { backgroundColor: theme.background },
+              isDark ? Shadow.raised.dark : Shadow.raised.light,
+            ]}
             onStartShouldSetResponder={() => true}>
             <ThemedText type="smallBold">계정 발급</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
@@ -563,25 +567,12 @@ export default function MembersScreen() {
             )}
 
             <View style={styles.modalActions}>
-              <Pressable
-                onPress={closeIssue}
-                style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  취소
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                disabled={issueSubmitting}
-                onPress={submitIssue}
-                style={({ pressed }) => [
-                  styles.modalButton,
-                  styles.modalButtonPrimary,
-                  pressed && styles.pressed,
-                ]}>
-                <ThemedText type="smallBold" style={{ color: '#FFFFFF' }}>
-                  {issueSubmitting ? '생성 중...' : '계정 생성'}
-                </ThemedText>
-              </Pressable>
+              <Button variant="ghost" onPress={closeIssue}>
+                취소
+              </Button>
+              <Button variant="primary" disabled={issueSubmitting} loading={issueSubmitting} onPress={submitIssue}>
+                계정 생성
+              </Button>
             </View>
           </View>
         </Pressable>
@@ -620,11 +611,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.caption,
   },
   list: {
-    gap: Spacing.two,
+    gap: 15,
     paddingBottom: BottomTabInset + Spacing.five,
   },
   card: {
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.three,
     gap: 4,
   },
@@ -677,7 +668,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     maxHeight: '85%',
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.three,
     gap: Spacing.two,
   },
@@ -688,14 +679,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: Spacing.two,
-  },
-  modalButton: {
-    borderRadius: BorderRadius.sm,
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-  },
-  modalButtonPrimary: {
-    backgroundColor: '#22C55E',
   },
   input: {
     borderRadius: BorderRadius.sm,

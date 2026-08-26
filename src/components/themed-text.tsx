@@ -5,7 +5,7 @@ import { scaleTextStyle, useHomeTextScale } from '@/contexts/home-text-scale';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
+  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code' | 'display';
   themeColor?: ThemeColor;
 };
 
@@ -28,7 +28,9 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
                 ? styles.link
                 : type === 'linkPrimary'
                   ? styles.linkPrimary
-                  : styles.code;
+                  : type === 'display'
+                    ? styles.display
+                    : styles.code;
 
   const scaledTypeStyle = scale === 1 ? typeStyle : scaleTextStyle(typeStyle, scaled);
   const scaledCustomStyle =
@@ -66,6 +68,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.title,
     fontWeight: 600,
     lineHeight: 42,
+  },
+  display: {
+    fontSize: FontSize.title,
+    fontWeight: 800,
+    lineHeight: 40,
   },
   subtitle: {
     fontSize: FontSize.subtitle,

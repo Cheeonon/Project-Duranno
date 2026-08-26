@@ -13,13 +13,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnimatedIcon } from '@/components/animated-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BorderRadius, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { Accent, BorderRadius, FontSize, KoreanFont, MaxContentWidth, Shadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { getStaySignedInPreference, setStaySignedInPreference } from '@/lib/supabase';
 
 export default function LoginScreen() {
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -67,7 +70,9 @@ export default function LoginScreen() {
               </ThemedText>
             </View>
 
-            <ThemedView type="backgroundElement" style={styles.formCard}>
+            <ThemedView
+              type="backgroundElement"
+              style={[styles.formCard, isDark ? Shadow.card.dark : Shadow.card.light]}>
               <ThemedText type="smallBold" style={styles.formTitle}>
                 로그인
               </ThemedText>
@@ -137,7 +142,7 @@ export default function LoginScreen() {
                     styles.checkbox,
                     {
                       borderColor: theme.backgroundSelected,
-                      backgroundColor: staySignedIn ? '#22C55E' : theme.background,
+                      backgroundColor: staySignedIn ? Accent.green : theme.background,
                     },
                   ]}>
                   {staySignedIn ? <ThemedText style={styles.checkmark}>✓</ThemedText> : null}
@@ -158,18 +163,9 @@ export default function LoginScreen() {
                 </ThemedText>
               ) : null}
 
-              <Pressable
-                onPress={handleSubmit}
-                disabled={submitting}
-                style={({ pressed }) => [
-                  styles.loginButton,
-                  { opacity: submitting ? 0.6 : 1 },
-                  pressed && styles.pressed,
-                ]}>
-                <ThemedText type="smallBold" style={styles.loginButtonText}>
-                  {submitting ? '로그인 중...' : '로그인'}
-                </ThemedText>
-              </Pressable>
+              <Button variant="primary" fullWidth onPress={handleSubmit} loading={submitting}>
+                {submitting ? '로그인 중...' : '로그인'}
+              </Button>
             </ThemedView>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -206,11 +202,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: FontSize.heading,
     lineHeight: 28,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   subtitle: {
     textAlign: 'center',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   formCard: {
     borderRadius: BorderRadius.lg,
@@ -218,13 +214,13 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   formTitle: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   fieldGroup: {
     gap: Spacing.one,
   },
   label: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   input: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -232,7 +228,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: FontSize.default,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   stayLoggedInRow: {
     flexDirection: 'row',
@@ -258,27 +254,16 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   stayLoggedInLabel: {
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   stayLoggedInHint: {
     fontSize: FontSize.micro,
     lineHeight: 14,
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   errorText: {
     color: '#EF4444',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
-  },
-  loginButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: BorderRadius.md,
-    backgroundColor: '#22C55E',
-    paddingVertical: Spacing.two,
-  },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontFamily: 'Apple SD Gothic Neo, Malgun Gothic, Nanum Gothic, Noto Sans KR, sans-serif',
+    fontFamily: KoreanFont,
   },
   pressed: {
     opacity: 0.7,

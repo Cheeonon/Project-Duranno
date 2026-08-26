@@ -10,11 +10,15 @@ import { Link } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Pressable, View, StyleSheet } from 'react-native';
 
+import { MemberAvatar } from './member-avatar';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { BorderRadius, Colors, FontSize, MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
+import { BorderRadius, Colors, FontSize, MaxContentWidth, Shadow, Spacing, TopTabInset } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+
+const PROFILE_ICON_SIZE = 30;
 
 export default function AppTabs() {
   return (
@@ -43,7 +47,7 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
         style={[
           styles.tabButtonView,
-          isFocused && (isDark ? styles.tabButtonViewFocusedDark : styles.tabButtonViewFocusedLight),
+          isFocused && (isDark ? Shadow.card.dark : Shadow.card.light),
         ]}>
         <ThemedText type="smallBold" themeColor={isFocused ? 'text' : 'textSecondary'} style={styles.navLabel}>
           {children}
@@ -54,38 +58,45 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
 }
 
 export function CustomTabList(props: TabListProps) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
-
   return (
     <View {...props} style={styles.tabListContainer}>
-      <ThemedView
-        type="backgroundElement"
-        style={[
-          styles.innerContainer,
-          scheme === 'dark' ? styles.innerContainerShadowDark : styles.innerContainerShadowLight,
-        ]}>
-        <ThemedText type="smallBold" style={styles.brandText} numberOfLines={1}>
-          DURANNO
-        </ThemedText>
-
-        {props.children}
-
-        <Link href="/settings" asChild>
-          <Pressable style={styles.settingsPressable}>
-            <ThemedText type="link" style={styles.navLabel}>
-              설정
+      <View style={styles.navRow}>
+        <Link href="/" asChild>
+          <Pressable accessibilityLabel="홈으로 이동">
+            <ThemedText type="smallBold" style={styles.brandText} numberOfLines={1}>
+              DURANNO
             </ThemedText>
-            <SymbolView
-              tintColor={colors.text}
-              name={{ ios: 'gearshape', web: 'settings' }}
-              size={16}
-            />
           </Pressable>
         </Link>
-      </ThemedView>
+
+        <Link href="/settings" asChild>
+          <Pressable accessibilityLabel="내 정보" style={styles.profilePressable}>
+            <ProfileIcon />
+          </Pressable>
+        </Link>
+      </View>
     </View>
   );
+}
+
+function ProfileIcon() {
+  const scheme = useColorScheme();
+  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const { profile } = useAuth();
+
+  // Not loaded yet — no name to derive a fallback letter from, so fall back
+  // to the generic icon until the profile arrives.
+  if (!profile) {
+    return (
+      <SymbolView
+        tintColor={colors.text}
+        name={{ ios: 'person.crop.circle', web: 'account_circle' }}
+        size={PROFILE_ICON_SIZE}
+      />
+    );
+  }
+
+  return <MemberAvatar uri={profile.photoUrl} nameKo={profile.nameKo} size={PROFILE_ICON_SIZE} />;
 }
 
 const styles = StyleSheet.create({
@@ -99,25 +110,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
   },
-  innerContainer: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    borderRadius: BorderRadius.xl,
+  navRow: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
     flexDirection: 'row',
     alignItems: 'center',
-    flexGrow: 1,
-    gap: Spacing.two,
-    maxWidth: MaxContentWidth,
-  },
-  innerContainerShadowLight: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.3)', inset: true }],
-  },
-  innerContainerShadowDark: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.06)', inset: true }],
+    justifyContent: 'space-between',
   },
   brandText: {
-    marginRight: 'auto',
-    flexShrink: 1,
     fontSize: FontSize.body,
     lineHeight: 20,
   },
@@ -131,19 +131,11 @@ const styles = StyleSheet.create({
   tabButtonView: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.full,
   },
-  tabButtonViewFocusedLight: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.35)', inset: true }],
-  },
-  tabButtonViewFocusedDark: {
-    boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 4, color: 'rgba(255, 255, 255, 0.07)', inset: true }],
-  },
-  settingsPressable: {
+  profilePressable: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: Spacing.one,
-    marginLeft: Spacing.one,
   },
 });

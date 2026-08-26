@@ -4,7 +4,9 @@ import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react
 import { CALENDAR_FILTER_OPTIONS, type CalendarFilterCategory } from '@/components/calendar-filter';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BorderRadius, FontSize, Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { BorderRadius, FontSize, Shadow, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type CalendarEventFormValue = {
@@ -44,6 +46,7 @@ export function CalendarEventFormModal({
   error,
 }: CalendarEventFormModalProps) {
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
   const [draft, setDraft] = useState<CalendarEventFormValue>(EMPTY_DRAFT);
 
   useEffect(() => {
@@ -64,7 +67,11 @@ export function CalendarEventFormModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <View
-          style={[styles.modalCard, { backgroundColor: theme.background }]}
+          style={[
+            styles.modalCard,
+            { backgroundColor: theme.background },
+            isDark ? Shadow.raised.dark : Shadow.raised.light,
+          ]}
           onStartShouldSetResponder={() => true}>
           <ScrollView contentContainerStyle={styles.modalScrollContent}>
             <ThemedText type="smallBold">{isEditing ? '일정 수정' : '일정 추가'}</ThemedText>
@@ -135,26 +142,16 @@ export function CalendarEventFormModal({
               )}
 
               <View style={styles.modalActionsRight}>
-                <Pressable
-                  onPress={onClose}
-                  style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    취소
-                  </ThemedText>
-                </Pressable>
-                <Pressable
+                <Button variant="ghost" onPress={onClose}>
+                  취소
+                </Button>
+                <Button
+                  variant="primary"
                   disabled={submitting || !canSubmit}
-                  onPress={() => onSubmit(draft)}
-                  style={({ pressed }) => [
-                    styles.modalButton,
-                    styles.modalButtonPrimary,
-                    (submitting || !canSubmit) && styles.modalButtonDisabled,
-                    pressed && styles.pressed,
-                  ]}>
-                  <ThemedText type="smallBold" style={styles.submitLabel}>
-                    {submitting ? '저장 중...' : '저장'}
-                  </ThemedText>
-                </Pressable>
+                  loading={submitting}
+                  onPress={() => onSubmit(draft)}>
+                  저장
+                </Button>
               </View>
             </View>
           </ScrollView>
@@ -176,7 +173,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     maxHeight: '85%',
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.three,
     gap: Spacing.two,
   },
@@ -198,17 +195,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
   },
-  modalButtonPrimary: {
-    backgroundColor: '#22C55E',
-  },
-  modalButtonDisabled: {
-    opacity: 0.5,
-  },
   deleteLabel: {
     color: '#EF4444',
-  },
-  submitLabel: {
-    color: '#FFFFFF',
   },
   input: {
     borderRadius: BorderRadius.sm,
