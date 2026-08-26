@@ -27,6 +27,7 @@ import {
 } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePreservedCollapse } from '@/hooks/use-preserved-collapse';
 import { useTheme } from '@/hooks/use-theme';
 import { getUpcomingEvents } from '@/lib/calendar-events';
@@ -45,6 +46,13 @@ type QuickActionPanel = 'attendance' | 'memberSearch' | 'nextEvent';
 // get clipped at the bottom of the hero fold — web has more headroom.
 const QUICK_ACTION_ICON_SIZE = Platform.select({ web: 62, default: 52 }) ?? 62;
 
+// A touch darker than the shared `Shadow.card` token, just for the
+// quick-action circles.
+const QUICK_ACTION_SHADOW = {
+  light: { shadowOpacity: 0.12 },
+  dark: { shadowOpacity: 0.33 },
+};
+
 function getGreetingFontSize(width: number) {
   if (width <= GREETING_MIN_WIDTH) {
     return GREETING_MIN_FONT_SIZE;
@@ -59,6 +67,7 @@ function getGreetingFontSize(width: number) {
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const greetingFontSize = getGreetingFontSize(width);
@@ -75,7 +84,7 @@ export default function HomeScreen() {
   const [quickActionsHeight, setQuickActionsHeight] = useState(0);
   // Fixed proportion of the viewport (like a CSS `70vh`) so all three
   // quick-action panels always line up at the same top/bottom.
-  const panelHeight = height * 0.7;
+  const panelHeight = height * 0.7 - 15;
   const { profile, refreshProfile } = useAuth();
   const { events } = useCalendarEvents();
 
@@ -184,14 +193,14 @@ export default function HomeScreen() {
               <View
                 style={[styles.panelOverlay, { bottom: quickActionsHeight + Spacing.three }]}
                 pointerEvents="box-none">
-                <ExpandablePanel isOpen={activePanel === 'nextEvent'} height={panelHeight}>
+                <ExpandablePanel isOpen={activePanel === 'nextEvent'} height={panelHeight - 15}>
                   <ThemedView type="backgroundSelected" style={styles.nextEventContainer}>
                     <ThemedText type="smallBold" style={styles.koreanText}>
                       다음 일정
                     </ThemedText>
 
                     <ScrollView
-                      style={[styles.nextEventScroll, { height: panelHeight - 10 }]}
+                      style={[styles.nextEventScroll, { height: panelHeight - 25, marginTop: 5 }]}
                       contentContainerStyle={styles.nextEventList}
                       nestedScrollEnabled
                       showsVerticalScrollIndicator={false}>
@@ -239,7 +248,7 @@ export default function HomeScreen() {
                   </ThemedView>
                 </ExpandablePanel>
 
-                <ExpandablePanel isOpen={activePanel === 'attendance'} height={panelHeight}>
+                <ExpandablePanel isOpen={activePanel === 'attendance'} height={panelHeight - 15}>
                   <AttendancePanel key={`attendance-${refreshKey}`} />
                 </ExpandablePanel>
 
@@ -258,6 +267,7 @@ export default function HomeScreen() {
                 <Button
                   variant="icon"
                   size={QUICK_ACTION_ICON_SIZE}
+                  circleStyle={isDark ? QUICK_ACTION_SHADOW.dark : QUICK_ACTION_SHADOW.light}
                   accessibilityLabel="출결 보기"
                   caption="출결"
                   icon={<Ionicons name="checkmark-done-outline" size={24} color={iconColor} />}
@@ -266,6 +276,7 @@ export default function HomeScreen() {
                 <Button
                   variant="icon"
                   size={QUICK_ACTION_ICON_SIZE}
+                  circleStyle={isDark ? QUICK_ACTION_SHADOW.dark : QUICK_ACTION_SHADOW.light}
                   accessibilityLabel="교인 검색"
                   caption="교인검색"
                   icon={<Ionicons name="search-outline" size={22} color={iconColor} />}
@@ -274,6 +285,7 @@ export default function HomeScreen() {
                 <Button
                   variant="icon"
                   size={QUICK_ACTION_ICON_SIZE}
+                  circleStyle={isDark ? QUICK_ACTION_SHADOW.dark : QUICK_ACTION_SHADOW.light}
                   accessibilityLabel="다음 일정"
                   caption="다음일정"
                   icon={<Ionicons name="calendar-outline" size={22} color={iconColor} />}
@@ -282,6 +294,7 @@ export default function HomeScreen() {
                 <Button
                   variant="icon"
                   size={QUICK_ACTION_ICON_SIZE}
+                  circleStyle={isDark ? QUICK_ACTION_SHADOW.dark : QUICK_ACTION_SHADOW.light}
                   accessibilityLabel="성도관리로 이동"
                   caption="성도관리"
                   icon={<Ionicons name="people-outline" size={24} color={iconColor} />}

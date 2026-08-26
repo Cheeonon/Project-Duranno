@@ -37,6 +37,8 @@ export type ButtonProps = {
   caption?: string;
   /** Circle diameter — variant="icon" only. */
   size?: number;
+  /** Extra style merged onto the circle, after its shadow — variant="icon" only. */
+  circleStyle?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
 };
 
@@ -54,6 +56,7 @@ export function Button({
   badge,
   caption,
   size = DEFAULT_ICON_SIZE,
+  circleStyle,
   accessibilityLabel,
 }: ButtonProps) {
   const theme = useTheme();
@@ -79,6 +82,7 @@ export function Button({
                   backgroundColor: theme.backgroundElement,
                 },
                 isDark ? Shadow.card.dark : Shadow.card.light,
+                circleStyle,
                 !isDisabled && hovered && hoverDim,
                 isDisabled && styles.disabled,
               ]}>

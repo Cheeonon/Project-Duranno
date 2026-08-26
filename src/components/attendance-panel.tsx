@@ -39,10 +39,6 @@ export function AttendancePanel() {
     () => members.filter((member) => (member.cellLeaderId ?? member.id) === myEffectiveLeaderId),
     [members, myEffectiveLeaderId],
   );
-  const cellLeader = useMemo(
-    () => cellGroupMembers.find((member) => member.id === myEffectiveLeaderId),
-    [cellGroupMembers, myEffectiveLeaderId],
-  );
   const memberIds = useMemo(() => cellGroupMembers.map((member) => member.id), [cellGroupMembers]);
   const {
     attendance,
@@ -163,9 +159,6 @@ export function AttendancePanel() {
     <ThemedView type="backgroundSelected" style={styles.container}>
       <ThemedText type="smallBold" style={styles.headerTitle}>
         {profile?.cellGroup ?? '내 셀'}
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.headerSubtitle}>
-        셀리더 {cellLeader ? `${cellLeader.nameKo} ${cellLeader.position}` : '-'}
       </ThemedText>
 
       {(isLoading || error) && (

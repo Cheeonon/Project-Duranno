@@ -38,9 +38,6 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
       <ThemedText type="smallBold" style={styles.headerTitle}>
         교인 검색
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.headerSubtitle}>
-        이름, 생년월일, 전화번호, 셀그룹으로 검색
-      </ThemedText>
 
       <TextInput
         value={query}
@@ -63,8 +60,8 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
         ]}
       />
 
-      <ThemedText type="code" themeColor="textSecondary" style={styles.resultCount}>
-        {isLoading ? '불러오는 중...' : `${results.length}명`}
+      <ThemedText type="small" themeColor="textSecondary" style={styles.headerSubtitle}>
+        이름, 생년월일, 전화번호, 셀그룹으로 검색
       </ThemedText>
 
       <ScrollView
@@ -143,10 +140,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-    fontFamily: KoreanFont,
-  },
-  resultCount: {
-    fontSize: FontSize.micro,
     fontFamily: KoreanFont,
   },
   resultsScroll: {
