@@ -477,9 +477,9 @@ const styles = StyleSheet.create({
   logoutButton: {
     alignSelf: 'stretch',
     alignItems: 'center',
-    borderRadius: BorderRadius.full,
+    borderRadius: BorderRadius.md,
     backgroundColor: '#EF4444',
-    paddingVertical: Spacing.three,
+    paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
   },
   logoutButtonText: {

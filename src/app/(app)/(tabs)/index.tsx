@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -43,7 +43,7 @@ type QuickActionPanel = 'attendance' | 'memberSearch' | 'nextEvent';
 
 // Shrunk on native phones so the quick-action row (icon + caption) doesn't
 // get clipped at the bottom of the hero fold — web has more headroom.
-const QUICK_ACTION_ICON_SIZE = Platform.select({ web: 56, default: 46 }) ?? 56;
+const QUICK_ACTION_ICON_SIZE = Platform.select({ web: 62, default: 52 }) ?? 62;
 
 function getGreetingFontSize(width: number) {
   if (width <= GREETING_MIN_WIDTH) {
@@ -100,6 +100,18 @@ export default function HomeScreen() {
       }
     };
   }, []);
+
+  // Landing back on the home tab (e.g. tapping "홈") should never leave a
+  // quick-action panel open from a previous visit.
+  useFocusEffect(
+    useCallback(() => {
+      if (pendingSwitchRef.current) {
+        clearTimeout(pendingSwitchRef.current);
+        pendingSwitchRef.current = null;
+      }
+      setActivePanel(null);
+    }, []),
+  );
 
   const togglePanel = (panel: QuickActionPanel) => {
     if (pendingSwitchRef.current) {
@@ -179,13 +191,19 @@ export default function HomeScreen() {
                     </ThemedText>
 
                     <ScrollView
-                      style={[styles.nextEventScroll, { height: panelHeight }]}
+                      style={[styles.nextEventScroll, { height: panelHeight - 10 }]}
                       contentContainerStyle={styles.nextEventList}
                       nestedScrollEnabled
                       showsVerticalScrollIndicator={false}>
                       {upcomingEvents.length > 0 ? (
-                        upcomingEvents.map((event) => (
-                          <View key={event.id} style={styles.eventRow}>
+                        upcomingEvents.map((event, index) => (
+                          <View
+                            key={event.id}
+                            style={[
+                              styles.eventRow,
+                              index > 0 && styles.eventRowSeparator,
+                              index > 0 && { borderTopColor: theme.border },
+                            ]}>
                             <View
                               style={[
                                 styles.highlightDot,
@@ -225,7 +243,7 @@ export default function HomeScreen() {
                   <AttendancePanel key={`attendance-${refreshKey}`} />
                 </ExpandablePanel>
 
-                <ExpandablePanel isOpen={activePanel === 'memberSearch'} height={panelHeight}>
+                <ExpandablePanel isOpen={activePanel === 'memberSearch'} height={panelHeight + 20}>
                   <MemberSearchPanel
                     key={`search-${refreshKey}`}
                     scrollRef={scrollRef}
@@ -323,6 +341,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.two,
+    marginBottom: 10,
   },
   koreanText: {
     fontFamily: KoreanFont,
@@ -341,6 +360,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.one,
+  },
+  eventRowSeparator: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: Spacing.two,
   },
   eventRowText: {
     flex: 1,

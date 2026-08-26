@@ -58,6 +58,7 @@ export function MemberSearchPanel({ scrollRef, preserveScrollPosition }: MemberS
             backgroundColor: theme.background,
             borderColor: theme.backgroundSelected,
             fontSize: scaled(FontSize.default),
+            lineHeight: scaled(24),
           },
         ]}
       />

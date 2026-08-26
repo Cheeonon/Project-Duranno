@@ -1,13 +1,24 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Accent, BorderRadius, Gradient, KoreanFont, Shadow, Spacing } from '@/constants/theme';
+import { Accent, BorderRadius, KoreanFont, Shadow, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'icon';
+
+// Pressable's `hovered` state only ever fires on web (react-native-web adds
+// it via mouse events) — the core RN type only declares `pressed`, so we
+// widen it locally instead of casting to `any` at every call site.
+type PressableRenderState = { pressed: boolean; hovered?: boolean };
+
+// Web-only hover feedback: darkens the pressed surface (background + icon/
+// text) a touch, via a CSS filter rather than a hardcoded shade, so it reads
+// correctly on every variant/color and in both light and dark theme without
+// new palette entries. `hovered` is always false on native, so this never
+// applies there.
+const hoverDim = { filter: 'brightness(0.92)' } as ViewStyle;
 
 export type ButtonProps = {
   variant?: ButtonVariant;
@@ -56,61 +67,64 @@ export function Button({
         onPress={onPress}
         disabled={isDisabled}
         style={({ pressed }) => [styles.iconColumn, pressed && styles.pressedIcon]}>
-        <View
-          style={[
-            styles.iconCircle,
-            { width: size, height: size, borderRadius: BorderRadius.full, backgroundColor: theme.backgroundElement },
-            isDark ? Shadow.card.dark : Shadow.card.light,
-            isDisabled && styles.disabled,
-          ]}>
-          {loading ? <ActivityIndicator color={theme.text} /> : icon}
-          {badge ? (
-            <View style={[styles.badge, { backgroundColor: theme.background }]}>
-              <View style={styles.badgeDot}>
-                <ThemedText type="smallBold" style={styles.badgePlus}>
-                  +
-                </ThemedText>
-              </View>
+        {({ hovered }: PressableRenderState) => (
+          <>
+            <View
+              style={[
+                styles.iconCircle,
+                {
+                  width: size,
+                  height: size,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: theme.backgroundElement,
+                },
+                isDark ? Shadow.card.dark : Shadow.card.light,
+                !isDisabled && hovered && hoverDim,
+                isDisabled && styles.disabled,
+              ]}>
+              {loading ? <ActivityIndicator color={theme.text} /> : icon}
+              {badge ? (
+                <View style={[styles.badge, { backgroundColor: theme.background }]}>
+                  <View style={styles.badgeDot}>
+                    <ThemedText type="smallBold" style={styles.badgePlus}>
+                      +
+                    </ThemedText>
+                  </View>
+                </View>
+              ) : null}
             </View>
-          ) : null}
-        </View>
-        {caption ? (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.caption} numberOfLines={1}>
-            {caption}
-          </ThemedText>
-        ) : null}
+            {caption ? (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.caption} numberOfLines={1}>
+                {caption}
+              </ThemedText>
+            ) : null}
+          </>
+        )}
       </Pressable>
     );
   }
 
   if (variant === 'primary') {
-    const gradientColors = isDark ? Gradient.primary.dark : Gradient.primary.light;
     return (
       <Pressable
         accessibilityLabel={accessibilityLabel}
         onPress={onPress}
         disabled={isDisabled}
-        style={({ pressed }) => [
+        style={({ pressed, hovered }: PressableRenderState) => [
+          styles.primaryFill,
           fullWidth && styles.fullWidth,
-          isDark ? Shadow.raised.dark : Shadow.raised.light,
-          styles.primaryWrapper,
+          !isDisabled && hovered && hoverDim,
           pressed && styles.pressedPrimary,
           isDisabled && styles.disabled,
           style,
         ]}>
-        <LinearGradient
-          colors={gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.pillFill}>
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <ThemedText type="smallBold" style={styles.primaryLabel}>
-              {children}
-            </ThemedText>
-          )}
-        </LinearGradient>
+        {loading ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <ThemedText type="smallBold" style={styles.primaryLabel}>
+            {children}
+          </ThemedText>
+        )}
       </Pressable>
     );
   }
@@ -121,11 +135,12 @@ export function Button({
         accessibilityLabel={accessibilityLabel}
         onPress={onPress}
         disabled={isDisabled}
-        style={({ pressed }) => [
+        style={({ pressed, hovered }: PressableRenderState) => [
           styles.pillFill,
           fullWidth && styles.fullWidth,
           { backgroundColor: theme.backgroundSelected },
           isDark ? Shadow.card.dark : Shadow.card.light,
+          !isDisabled && hovered && hoverDim,
           pressed && styles.pressedSecondary,
           isDisabled && styles.disabled,
           style,
@@ -147,11 +162,10 @@ export function Button({
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
       disabled={isDisabled}
-      style={({ pressed }) => [
-        styles.pillFill,
+      style={({ pressed, hovered }: PressableRenderState) => [
         styles.ghostFill,
         fullWidth && styles.fullWidth,
-        { borderColor: theme.border },
+        !isDisabled && hovered && hoverDim,
         pressed && styles.pressedGhost,
         isDisabled && styles.disabled,
         style,
@@ -171,8 +185,13 @@ const styles = StyleSheet.create({
   fullWidth: {
     alignSelf: 'stretch',
   },
-  primaryWrapper: {
-    borderRadius: BorderRadius.full,
+  primaryFill: {
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Accent.green,
   },
   pillFill: {
     borderRadius: BorderRadius.full,
@@ -182,7 +201,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ghostFill: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.sm,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'transparent',
   },
   primaryLabel: {

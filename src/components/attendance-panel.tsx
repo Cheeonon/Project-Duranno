@@ -194,8 +194,11 @@ export function AttendancePanel() {
         </Pressable>
       </View>
 
-      <ScrollView style={styles.tableVerticalScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
-      <View style={styles.tableWrapper}>
+      <ScrollView
+        style={styles.tableVerticalScroll}
+        contentContainerStyle={styles.tableContent}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator
@@ -300,7 +303,6 @@ export function AttendancePanel() {
             </ThemedText>
           </View>
         )}
-      </View>
       </ScrollView>
 
       <ThemedText type="code" themeColor="textSecondary" style={styles.demoNote}>
@@ -389,6 +391,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 40,
     gap: Spacing.two,
   },
   monthLabel: {
@@ -407,7 +410,7 @@ const styles = StyleSheet.create({
   tableVerticalScroll: {
     flex: 1,
   },
-  tableWrapper: {
+  tableContent: {
     alignSelf: 'stretch',
   },
   tableScroll: {
