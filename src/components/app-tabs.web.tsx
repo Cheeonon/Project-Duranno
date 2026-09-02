@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   brandText: {
-    fontSize: FontSize.body,
+    fontSize: FontSize.default,
     lineHeight: 20,
   },
   navLabel: {
