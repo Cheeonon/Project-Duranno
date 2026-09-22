@@ -7,7 +7,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 // Routes that fill the browser viewport instead of the centered phone-width
 // column — keyed by `usePathname()`'s resolved path, not the file/segment name.
-const WIDE_ROUTES = new Set(['/']);
+const WIDE_ROUTES = new Set(['/', '/members']);
 
 /**
  * On web, frames the app as a centered phone-width column — except on

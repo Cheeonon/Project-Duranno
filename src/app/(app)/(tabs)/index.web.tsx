@@ -1,10 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
 import { AnimatedUserName } from '@/components/animated-user-name';
 import { AttendancePanel } from '@/components/attendance-panel';
 import { CALENDAR_FILTER_OPTIONS } from '@/components/calendar-filter';
@@ -13,41 +12,46 @@ import { TabScreenSlide } from '@/components/tab-screen-slide';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
-import { Accent, BorderRadius, FontSize, KoreanFont, Spacing, TopTabInset } from '@/constants/theme';
+import { Accent, BorderRadius, FontSize, KoreanFont, Shadow, Spacing, TopTabInset } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { getUpcomingEvents } from '@/lib/calendar-events';
 
-const HEADER_GAP = Spacing.four;
-const GRID_GAP = Spacing.four;
+const TOP_GAP = Spacing.four;
+
+type DashboardPanel = 'attendance' | 'nextEvent' | 'memberSearch';
+
+type PanelTab = { kind: 'panel'; id: DashboardPanel; label: string; icon: keyof typeof Ionicons.glyphMap };
+type LinkTab = { kind: 'link'; href: '/members'; label: string; icon: keyof typeof Ionicons.glyphMap };
+
+const TAB_ITEMS: (PanelTab | LinkTab)[] = [
+  { kind: 'panel', id: 'attendance', label: '출결', icon: 'checkmark-done-outline' },
+  { kind: 'panel', id: 'nextEvent', label: '다음 일정', icon: 'calendar-outline' },
+  { kind: 'panel', id: 'memberSearch', label: '교인 검색', icon: 'search-outline' },
+  { kind: 'link', href: '/members', label: '성도관리', icon: 'people-outline' },
+];
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const [headerHeight, setHeaderHeight] = useState(0);
+  const [topHeight, setTopHeight] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activePanel, setActivePanel] = useState<DashboardPanel>('attendance');
   const { profile, refreshProfile } = useAuth();
   const { events } = useCalendarEvents();
 
   const upcomingEvents = useMemo(() => getUpcomingEvents(events, new Date()), [events]);
 
-  // Fills the remaining viewport below the header, like the mobile screen's
-  // `heroBlockMinHeight`/`panelHeight` — but here it sizes a persistent
-  // two-column grid instead of a single toggled panel.
-  const gridHeight = Math.max(
+  // Fills the remaining viewport below the header + tab bar, like the
+  // mobile screen's `heroBlockMinHeight`/`panelHeight`.
+  const panelHeight = Math.max(
     320,
-    height - insets.top - insets.bottom - TopTabInset - Spacing.four * 2 - headerHeight - HEADER_GAP,
-  );
-  const secondaryCardHeight = (gridHeight - GRID_GAP) / 2;
-
-  useFocusEffect(
-    useCallback(() => {
-      // No toggled panel state to reset on this layout — kept for parity
-      // with the mobile screen's tab-refocus hook in case one is added later.
-    }, []),
+    height - insets.top - insets.bottom - TopTabInset - Spacing.four * 2 - topHeight - TOP_GAP,
   );
 
   const onRefresh = useCallback(async () => {
@@ -68,39 +72,72 @@ export default function HomeScreen() {
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}>
-            <View style={styles.headerRow} onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}>
-              <View style={styles.heroBlock}>
-                <AnimatedIcon />
-                <ThemedText type="display" style={styles.greeting}>
-                  소중한 <AnimatedUserName name={profile?.nameKo ?? '성도'} />
-                  님,{'\n'}
-                  오늘도 교회를 위해 함께 해주셔서 감사해요.
-                </ThemedText>
+            <View style={styles.topBlock} onLayout={(event) => setTopHeight(event.nativeEvent.layout.height)}>
+              <View style={styles.headerRow}>
+                <View style={styles.headerSpacer} />
+
+                <View style={styles.heroBlock}>
+                  <ThemedText type="display" style={styles.greeting}>
+                    소중한{' '}
+                    <AnimatedUserName
+                      name={profile?.nameKo ?? '성도'}
+                      fontSize={FontSize.title + 10}
+                      lineHeight={FontSize.title + 10}
+                    />
+                    님,{'\n'}
+                    오늘도 교회를 위해 함께 해주셔서 감사해요.
+                  </ThemedText>
+                </View>
+
+                <View style={styles.headerActions}>
+                  <Button
+                    variant="icon"
+                    size={48}
+                    loading={refreshing}
+                    accessibilityLabel="새로고침"
+                    caption="새로고침"
+                    icon={<Ionicons name="refresh-outline" size={20} color={theme.text} />}
+                    onPress={onRefresh}
+                  />
+                </View>
               </View>
 
-              <View style={styles.headerActions}>
-                <Button
-                  variant="icon"
-                  size={48}
-                  loading={refreshing}
-                  accessibilityLabel="새로고침"
-                  caption="새로고침"
-                  icon={<Ionicons name="refresh-outline" size={20} color={theme.text} />}
-                  onPress={onRefresh}
-                />
-                <Button variant="secondary" onPress={() => router.push('/members')}>
-                  성도관리
-                </Button>
+              <View style={[styles.tabBar, styles.tabBarCentered]}>
+                {TAB_ITEMS.map((tab) => {
+                  const isActive = tab.kind === 'panel' && activePanel === tab.id;
+                  const key = tab.kind === 'panel' ? tab.id : tab.href;
+                  return (
+                    <Pressable
+                      key={key}
+                      accessibilityLabel={tab.label}
+                      onPress={() => (tab.kind === 'panel' ? setActivePanel(tab.id) : router.push(tab.href))}
+                      style={({ pressed }) => [styles.tabPressable, pressed && styles.pressed]}>
+                      <ThemedView
+                        type={isActive ? 'backgroundSelected' : 'backgroundElement'}
+                        style={[styles.tabButton, isActive && (isDark ? Shadow.card.dark : Shadow.card.light)]}>
+                        <Ionicons
+                          name={tab.icon}
+                          size={18}
+                          color={isActive ? theme.text : theme.textSecondary}
+                        />
+                        <ThemedText
+                          type="smallBold"
+                          themeColor={isActive ? 'text' : 'textSecondary'}
+                          style={styles.koreanText}>
+                          {tab.label}
+                        </ThemedText>
+                      </ThemedView>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
 
-            <View style={[styles.grid, { minHeight: gridHeight }]}>
-              <View style={[styles.columnPrimary, { height: gridHeight }]}>
-                <AttendancePanel key={`attendance-${refreshKey}`} />
-              </View>
+            <View style={[styles.panelArea, { height: panelHeight }]}>
+              {activePanel === 'attendance' && <AttendancePanel key={`attendance-${refreshKey}`} />}
 
-              <View style={styles.columnSecondary}>
-                <ThemedView type="backgroundSelected" style={[styles.nextEventCard, { height: secondaryCardHeight }]}>
+              {activePanel === 'nextEvent' && (
+                <ThemedView type="backgroundSelected" style={styles.nextEventCard}>
                   <ThemedText type="smallBold" style={styles.koreanText}>
                     다음 일정
                   </ThemedText>
@@ -151,11 +188,9 @@ export default function HomeScreen() {
                     전체 일정 보기
                   </Button>
                 </ThemedView>
+              )}
 
-                <View style={[styles.memberSearchCard, { height: secondaryCardHeight }]}>
-                  <MemberSearchPanel key={`search-${refreshKey}`} />
-                </View>
-              </View>
+              {activePanel === 'memberSearch' && <MemberSearchPanel key={`search-${refreshKey}`} />}
             </View>
           </ScrollView>
         </SafeAreaView>
@@ -179,49 +214,66 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.five,
     paddingTop: Spacing.four,
     paddingBottom: Spacing.four,
-    gap: HEADER_GAP,
+    gap: TOP_GAP,
+  },
+  topBlock: {
+    gap: Spacing.three,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: Spacing.four,
+  },
+  headerSpacer: {
+    flex: 1,
   },
   heroBlock: {
-    flexDirection: 'row',
+    flex: 2,
     alignItems: 'center',
-    gap: Spacing.four,
-    flexShrink: 1,
   },
   greeting: {
-    flexShrink: 1,
+    textAlign: 'center',
     fontFamily: KoreanFont,
     fontSize: FontSize.title,
     lineHeight: Math.round(FontSize.title * 1.25),
   },
   headerActions: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: Spacing.three,
   },
   koreanText: {
     fontFamily: KoreanFont,
   },
-  grid: {
+  tabBar: {
     flexDirection: 'row',
-    gap: GRID_GAP,
-    alignItems: 'stretch',
+    gap: Spacing.two,
   },
-  columnPrimary: {
-    flex: 1.3,
-    minWidth: 420,
+  tabBarCentered: {
+    justifyContent: 'center',
   },
-  columnSecondary: {
-    flex: 1,
-    minWidth: 360,
-    gap: GRID_GAP,
+  tabPressable: {
+    borderRadius: BorderRadius.full,
+  },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    borderRadius: BorderRadius.full,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  panelArea: {
+    alignSelf: 'center',
+    width: '70%',
   },
   nextEventCard: {
+    flex: 1,
     borderRadius: BorderRadius.lg,
     padding: Spacing.three,
     gap: Spacing.two,
@@ -250,8 +302,5 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: BorderRadius.full,
-  },
-  memberSearchCard: {
-    flexShrink: 0,
   },
 });
