@@ -1,25 +1,35 @@
 import type { PropsWithChildren } from 'react';
+import { usePathname } from 'expo-router';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { MobileShellWidth } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+// Routes that fill the browser viewport instead of the centered phone-width
+// column — keyed by `usePathname()`'s resolved path, not the file/segment name.
+const WIDE_ROUTES = new Set(['/']);
+
 /**
- * On web, frames the entire app as a centered phone-width column.
+ * On web, frames the app as a centered phone-width column — except on
+ * `WIDE_ROUTES`, which fill the full viewport width for a desktop layout.
  * Native platforms render children unchanged.
  */
 export function WebAppShell({ children }: PropsWithChildren) {
   const theme = useTheme();
+  const pathname = usePathname();
 
   if (Platform.OS !== 'web') {
     return <>{children}</>;
   }
+
+  const isWideRoute = WIDE_ROUTES.has(pathname);
 
   return (
     <View style={[styles.viewport, { backgroundColor: theme.backgroundElement }]}>
       <View
         style={[
           styles.shell,
+          { maxWidth: isWideRoute ? '100%' : MobileShellWidth },
           {
             backgroundColor: theme.background,
             borderColor: theme.border,
@@ -42,7 +52,6 @@ const styles = StyleSheet.create({
   shell: {
     flex: 1,
     width: '100%',
-    maxWidth: MobileShellWidth,
     height: '100%',
     maxHeight: '100%',
     overflow: 'hidden',
