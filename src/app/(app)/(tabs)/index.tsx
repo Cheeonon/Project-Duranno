@@ -86,19 +86,19 @@ export default function HomeScreen() {
   // quick-action panels always line up at the same top/bottom.
   const panelHeight = height * 0.7 - 15;
   const { profile, refreshProfile } = useAuth();
-  const { events } = useCalendarEvents();
+  const { events, refresh: refreshEvents } = useCalendarEvents();
 
   const upcomingEvents = useMemo(() => getUpcomingEvents(events, new Date()), [events]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await refreshProfile();
+      await Promise.all([refreshProfile(), refreshEvents()]);
       setRefreshKey((current) => current + 1);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshProfile]);
+  }, [refreshProfile, refreshEvents]);
 
   const iconColor = theme.text;
 

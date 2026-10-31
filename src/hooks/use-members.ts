@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { buildVirtualCellHistory } from '@/lib/cell-history';
 import { signMemberPhotoUrls } from '@/lib/member-photos';
 import { supabase } from '@/lib/supabase';
 import type {
@@ -114,13 +113,18 @@ export function useMembers() {
 
     const historyByMemberId = new Map<string, CellGroupMembership[]>();
     if (memberIds.length > 0) {
-      const { data: historyData } = await supabase
+      const { data: historyData, error: historyError } = await supabase
         .from('member_cell_group_history')
         .select(
           'member_id, cell_leader_id, from_date, to_date, cell_leader:members!cell_leader_id(name_ko)',
         )
         .in('member_id', memberIds)
         .order('from_date', { ascending: true });
+
+      if (historyError) {
+        setState((current) => ({ ...current, isLoading: false, error: '셀 이력을 불러오지 못했습니다. 다시 시도해주세요.' }));
+        return;
+      }
 
       for (const row of (historyData as HistoryRow[] | null) ?? []) {
         const entry = mapHistoryRow(row, memberNameById);
@@ -131,24 +135,12 @@ export function useMembers() {
     }
 
     const mapped = rows.map((row) => mapRow(row, historyByMemberId.get(row.id) ?? [], memberNameById));
-    const cellLeaders = mapped.filter((member) => member.permission === '셀장');
-
-    const withHistory = mapped.map((member) => {
-      if (member.previousCellGroups.length > 0) {
-        return member;
-      }
-      return {
-        ...member,
-        previousCellGroups: buildVirtualCellHistory(member, cellLeaders),
-      };
-    });
-
-    const photoPaths = withHistory
+    const photoPaths = mapped
       .map((member) => member.photoPath)
       .filter((path): path is string => Boolean(path));
     const photoUrlByPath = await signMemberPhotoUrls(photoPaths);
 
-    const withPhotos = withHistory.map((member) => ({
+    const withPhotos = mapped.map((member) => ({
       ...member,
       photoUrl: member.photoPath ? (photoUrlByPath.get(member.photoPath) ?? null) : null,
     }));

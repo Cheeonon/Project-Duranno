@@ -1,3 +1,4 @@
+import { BiometricLockProvider } from '@/contexts/biometric-lock';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -41,13 +42,24 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkNavTheme : LightNavTheme}>
       <AuthProvider>
-        <HomeTextScaleProvider>
-          <WebAppShell>
-            <RootNavigator />
-          </WebAppShell>
-        </HomeTextScaleProvider>
+        <AuthenticatedApp />
       </AuthProvider>
     </ThemeProvider>
+  );
+}
+
+function AuthenticatedApp() {
+  const { isLoading, session } = useAuth();
+  if (isLoading) return null;
+  return (
+    <>
+      <AnimatedSplashOverlay />
+      <BiometricLockProvider key={session?.user.id ?? 'signed-out'}>
+        <HomeTextScaleProvider>
+          <WebAppShell><RootNavigator /></WebAppShell>
+        </HomeTextScaleProvider>
+      </BiometricLockProvider>
+    </>
   );
 }
 
@@ -60,7 +72,6 @@ function RootNavigator() {
 
   return (
     <>
-      <AnimatedSplashOverlay />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="login" />

@@ -41,6 +41,7 @@ export function AttendancePanel() {
   );
   const memberIds = useMemo(() => cellGroupMembers.map((member) => member.id), [cellGroupMembers]);
   const {
+    isSaving,
     attendance,
     absenceReasons,
     isLoading: attendanceLoading,
@@ -89,12 +90,13 @@ export function AttendancePanel() {
     setViewDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
   };
 
-  const toggleAttendance = (memberId: string, date: Date) => {
+  const toggleAttendance = async (memberId: string, date: Date) => {
     const key = getAttendanceKey(memberId, date);
     const wasPresent = Boolean(attendance[key]);
     const nextPresent = !wasPresent;
-    triggerFeedback(nextPresent ? 'present' : 'absent');
-    setPresent(memberId, date, nextPresent);
+    if (await setPresent(memberId, date, nextPresent)) {
+      triggerFeedback(nextPresent ? 'present' : 'absent');
+    }
   };
 
   const openAbsenceEditor = (memberId: string, memberName: string, date: Date) => {
@@ -122,20 +124,22 @@ export function AttendancePanel() {
   };
 
   const closeAbsenceEditor = () => {
+    if (isSaving) return;
     absencePrefillRequest.current += 1;
     setAbsenceEditor(null);
     setReasonDraft('');
   };
 
-  const saveAbsenceReason = () => {
-    if (!absenceEditor) {
+  const saveAbsenceReason = async () => {
+    if (!absenceEditor || isSaving) {
       return;
     }
 
     const trimmedReason = reasonDraft.trim();
-    triggerFeedback('saved');
-    setAbsenceReason(absenceEditor.memberId, absenceEditor.date, trimmedReason || null);
-    closeAbsenceEditor();
+    if (await setAbsenceReason(absenceEditor.memberId, absenceEditor.date, trimmedReason || null)) {
+      triggerFeedback('saved');
+      closeAbsenceEditor();
+    }
   };
 
   const getAbsenceCellHandlers = (memberId: string, memberName: string, date: Date) => {
@@ -170,6 +174,7 @@ export function AttendancePanel() {
       <View style={styles.monthNavigator}>
         <Pressable
           accessibilityLabel="이전 달"
+          disabled={isSaving}
           onPress={goToPrevMonth}
           style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}>
           <ThemedText type="smallBold">‹</ThemedText>
@@ -181,6 +186,7 @@ export function AttendancePanel() {
 
         <Pressable
           accessibilityLabel="다음 달"
+          disabled={isSaving}
           onPress={goToNextMonth}
           style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}>
           <ThemedText type="smallBold">›</ThemedText>
@@ -252,6 +258,7 @@ export function AttendancePanel() {
                   <Pressable
                     key={`${member.id}-${date.toISOString()}`}
                     accessibilityLabel={`${member.nameKo} ${formatAttendanceDate(date)} 출석`}
+                    disabled={isLoading || isSaving}
                     onPress={() => toggleAttendance(member.id, date)}
                     {...getAbsenceCellHandlers(member.id, member.nameKo, date)}
                     style={({ pressed }) => [
@@ -350,11 +357,12 @@ export function AttendancePanel() {
               ]}
             />
 
+            {attendanceError && <ThemedText type="small">{attendanceError}</ThemedText>}
             <View style={styles.modalActions}>
-              <Button variant="ghost" onPress={closeAbsenceEditor}>
+              <Button variant="ghost" disabled={isSaving} onPress={closeAbsenceEditor}>
                 취소
               </Button>
-              <Button variant="primary" onPress={saveAbsenceReason}>
+              <Button variant="primary" loading={isSaving} onPress={saveAbsenceReason}>
                 저장
               </Button>
             </View>

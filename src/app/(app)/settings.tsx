@@ -1,4 +1,5 @@
-import * as ImagePicker from 'expo-image-picker';
+import { BiometricLockSetting } from '@/components/biometric-lock-setting';
+import { pickMemberPhoto } from '@/lib/pick-member-photo';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -13,7 +14,7 @@ import { Accent, BorderRadius, BottomTabInset, KoreanFont, MaxContentWidth, Shad
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { deleteMemberPhoto, uploadMemberPhoto } from '@/lib/member-photos';
+import { deleteMemberPhoto } from '@/lib/member-photos';
 import { supabase } from '@/lib/supabase';
 
 export default function SettingsScreen() {
@@ -36,24 +37,6 @@ export default function SettingsScreen() {
 
     setPhotoError('');
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setPhotoError('사진 보관함 접근 권한이 필요합니다.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-
-    if (result.canceled || result.assets.length === 0) {
-      return;
-    }
-
-    const asset = result.assets[0];
     setPhotoUploading(true);
     try {
       const { data: currentMember } = await supabase
@@ -62,7 +45,9 @@ export default function SettingsScreen() {
         .eq('id', profile.memberId)
         .single();
 
-      const newPath = await uploadMemberPhoto(profile.memberId, asset.uri, asset.mimeType ?? 'image/jpeg');
+      const photo = await pickMemberPhoto(profile.memberId);
+      if (!photo) return;
+      const newPath = photo.path;
 
       const { error: updateError } = await supabase
         .from('members')
@@ -70,6 +55,7 @@ export default function SettingsScreen() {
         .eq('id', profile.memberId);
 
       if (updateError) {
+        await deleteMemberPhoto(newPath);
         throw updateError;
       }
 
@@ -275,6 +261,7 @@ export default function SettingsScreen() {
             <ThemedText type="smallBold" style={styles.sectionTitle}>
               앱 설정
             </ThemedText>
+            <BiometricLockSetting />
             <View style={styles.settingRow}>
               <ThemedText type="small" style={styles.settingRowLabel}>
                 글자 크기

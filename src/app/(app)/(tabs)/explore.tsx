@@ -32,7 +32,7 @@ function toISODate(date: Date) {
 export default function CalendarScreen() {
   const safeAreaInsets = useSafeAreaInsets();
   const { profile } = useAuth();
-  const { events, refresh } = useCalendarEvents();
+  const { events, refresh, error: eventsError } = useCalendarEvents();
   const [selectedFilters, setSelectedFilters] = useState<CalendarFilterCategory[]>([
     'birthdays',
     'events',
@@ -146,6 +146,11 @@ export default function CalendarScreen() {
             </ThemedText>
           </ThemedView>
 
+          {eventsError && (
+            <Pressable onPress={() => { void refresh(); }} accessibilityLabel="일정 다시 불러오기">
+              <ThemedText type="small">{eventsError} · 다시 시도</ThemedText>
+            </Pressable>
+          )}
           <View style={styles.calendarSection}>
             <View style={styles.calendarWrapper}>
               <Calendar

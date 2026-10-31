@@ -46,7 +46,7 @@ export function UpcomingEventsSection({
     'birthdays',
     'events',
   ]);
-  const { events } = useCalendarEvents();
+  const { events, error: eventsError } = useCalendarEvents();
 
   const upcomingEvents = useMemo(
     () => getUpcomingEvents(events, new Date(), selectedFilters),
@@ -93,7 +93,7 @@ export function UpcomingEventsSection({
             themeColor="textSecondary"
             style={[styles.previewText, isOpen && styles.previewHidden]}
             numberOfLines={1}>
-            {collapsedHint}
+            {eventsError ?? collapsedHint}
           </ThemedText>
         </View>
 

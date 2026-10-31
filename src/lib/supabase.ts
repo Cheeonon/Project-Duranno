@@ -1,3 +1,4 @@
+import { secureSessionStorage } from '@/lib/secure-session-storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
@@ -64,20 +65,24 @@ export async function setStaySignedInPreference(staySignedIn: boolean) {
 const conditionalStorage = {
   async getItem(key: string) {
     if (await getStaySignedInPreference()) {
-      return persistentStore.getItem(key);
+      return Platform.OS === 'web' ? persistentStore.getItem(key) : secureSessionStorage.getItem(key);
     }
     return memoryStore.get(key) ?? null;
   },
   async setItem(key: string, value: string) {
     if (await getStaySignedInPreference()) {
-      await persistentStore.setItem(key, value);
+      if (Platform.OS === 'web') await persistentStore.setItem(key, value);
+      else await secureSessionStorage.setItem(key, value);
       return;
     }
     memoryStore.set(key, value);
+    if (Platform.OS === 'web') await persistentStore.removeItem(key);
+    else await secureSessionStorage.removeItem(key);
   },
   async removeItem(key: string) {
     memoryStore.delete(key);
-    await persistentStore.removeItem(key);
+    if (Platform.OS === 'web') await persistentStore.removeItem(key);
+    else await secureSessionStorage.removeItem(key);
   },
 };
 

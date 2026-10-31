@@ -41,12 +41,14 @@ export default function LoginScreen() {
     }
 
     setSubmitting(true);
-    await setStaySignedInPreference(staySignedIn);
-    const { error: signInError } = await signIn(email.trim(), password);
-    setSubmitting(false);
-
-    if (signInError) {
+    try {
+      await setStaySignedInPreference(staySignedIn);
+      const { error: signInError } = await signIn(email.trim(), password);
       setError(signInError);
+    } catch {
+      setError('로그인 정보를 저장하지 못했습니다. 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
     }
   };
 

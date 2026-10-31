@@ -18,6 +18,7 @@ type Profile = {
 
 type AuthContextValue = {
   session: Session | null;
+  passwordSignInUserId: string | null;
   profile: Profile | null;
   isLoading: boolean;
   refreshProfile: () => Promise<void>;
@@ -78,6 +79,7 @@ async function fetchProfile(userId: string | undefined): Promise<Profile | null>
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [passwordSignInUserId, setPasswordSignInUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -85,10 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setIsLoading(false);
-    });
+    }).catch(() => setIsLoading(false));
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
+      if (!nextSession) setPasswordSignInUserId(null);
     });
 
     return () => subscription.subscription.unsubscribe();
@@ -111,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
+      passwordSignInUserId,
       profile,
       isLoading,
       refreshProfile: async () => {
@@ -118,7 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(nextProfile);
       },
       signIn: async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (!error && data.user) setPasswordSignInUserId(data.user.id);
         return { error: error ? '이메일 또는 비밀번호가 올바르지 않습니다.' : null };
       },
       signOut: async () => {
@@ -129,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: error ? '비밀번호 변경에 실패했습니다. 다시 시도해주세요.' : null };
       },
     }),
-    [session, profile, isLoading],
+    [session, passwordSignInUserId, profile, isLoading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { formatDateForDb, getAttendanceKey } from '@/lib/attendance-dates';
 import { supabase } from '@/lib/supabase';
@@ -18,29 +18,24 @@ export function useAttendance(memberIds: string[], sundays: Date[]) {
     error: null,
   });
 
+  const [isSaving, setIsSaving] = useState(false);
+  const loadVersion = useRef(0);
+
   const memberIdsKey = memberIds.join(',');
   const dateStrings = sundays.map(formatDateForDb);
   const dateStringsKey = dateStrings.join(',');
 
   useEffect(() => {
     let cancelled = false;
+    ++loadVersion.current;
 
-    async function ensureAndLoad() {
+    async function load() {
       if (memberIds.length === 0 || dateStrings.length === 0) {
         setState({ attendance: {}, absenceReasons: {}, isLoading: false, error: null });
         return;
       }
 
-      // Pre-create a row for every member × Sunday being viewed, so the month is
-      // fully queryable even before anyone marks it. Best-effort: read-only roles
-      // (사역자/재정) can't insert, and that's fine — they just won't seed rows.
-      const placeholders = memberIds.flatMap((memberId) =>
-        dateStrings.map((attendedDate) => ({ member_id: memberId, attended_date: attendedDate })),
-      );
-      await supabase
-        .from('attendance_records')
-        .upsert(placeholders, { onConflict: 'member_id,attended_date', ignoreDuplicates: true });
-
+      setState((current) => ({ ...current, isLoading: true, error: null }));
       const { data, error } = await supabase
         .from('attendance_records')
         .select('member_id, attended_date, present, absence_reason')
@@ -74,7 +69,10 @@ export function useAttendance(memberIds: string[], sundays: Date[]) {
       setState({ attendance, absenceReasons, isLoading: false, error: null });
     }
 
-    ensureAndLoad();
+    void load().catch(() => {
+      if (!cancelled) setState((current) => ({ ...current, isLoading: false,
+        error: '출석 정보를 불러오지 못했습니다. 다시 시도해주세요.' }));
+    });
 
     return () => {
       cancelled = true;
@@ -82,55 +80,48 @@ export function useAttendance(memberIds: string[], sundays: Date[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberIdsKey, dateStringsKey]);
 
-  const setPresent = useCallback((memberId: string, date: Date, present: boolean) => {
+  // A key can only have one write in flight. Commit UI state after the DB
+  // confirms the saved row, so failures never appear as successful changes.
+  const pendingWrites = useRef(new Set<string>());
+  const saveRecord = useCallback(async (
+    memberId: string, date: Date, present: boolean, reason: string | null | undefined,
+  ): Promise<boolean> => {
     const key = getAttendanceKey(memberId, date);
-
-    setState((current) => {
-      const attendance = { ...current.attendance, [key]: present };
-      const absenceReasons = { ...current.absenceReasons };
-      if (present) {
-        delete absenceReasons[key];
-      }
-      return { ...current, attendance, absenceReasons };
-    });
-
-    supabase
-      .from('attendance_records')
-      .update({ present, absence_reason: present ? null : undefined })
-      .eq('member_id', memberId)
-      .eq('attended_date', formatDateForDb(date))
-      .then(({ error }) => {
-        if (error) {
-          console.error('출석 저장 실패:', error.message);
-        }
+    if (pendingWrites.current.has(key)) return false;
+    pendingWrites.current.add(key);
+    const version = loadVersion.current;
+    setIsSaving(true);
+    try {
+      const { data, error } = await supabase.from('attendance_records')
+        .upsert({ member_id: memberId, attended_date: formatDateForDb(date),
+          present, ...(reason !== undefined ? { absence_reason: reason } : {}) },
+          { onConflict: 'member_id,attended_date' })
+        .select('present, absence_reason').single();
+      if (error || !data) throw error ?? new Error('저장 결과를 확인하지 못했습니다.');
+      if (version !== loadVersion.current) return true;
+      setState((current) => {
+        const absenceReasons = { ...current.absenceReasons };
+        if (data.absence_reason) absenceReasons[key] = data.absence_reason;
+        else delete absenceReasons[key];
+        return { ...current, attendance: { ...current.attendance, [key]: Boolean(data.present) },
+          absenceReasons, error: null };
       });
+      return true;
+    } catch {
+      if (version === loadVersion.current) setState((current) => ({ ...current,
+        error: '출석 저장에 실패했습니다. 연결을 확인하고 다시 시도해주세요.' }));
+      return false;
+    } finally {
+      pendingWrites.current.delete(key);
+      setIsSaving(pendingWrites.current.size > 0);
+    }
   }, []);
 
-  const setAbsenceReason = useCallback((memberId: string, date: Date, reason: string | null) => {
-    const key = getAttendanceKey(memberId, date);
+  const setPresent = useCallback((memberId: string, date: Date, present: boolean) =>
+    saveRecord(memberId, date, present, present ? null : undefined), [saveRecord]);
 
-    setState((current) => {
-      const attendance = { ...current.attendance, [key]: false };
-      const absenceReasons = { ...current.absenceReasons };
-      if (reason) {
-        absenceReasons[key] = reason;
-      } else {
-        delete absenceReasons[key];
-      }
-      return { ...current, attendance, absenceReasons };
-    });
-
-    supabase
-      .from('attendance_records')
-      .update({ present: false, absence_reason: reason })
-      .eq('member_id', memberId)
-      .eq('attended_date', formatDateForDb(date))
-      .then(({ error }) => {
-        if (error) {
-          console.error('결석 사유 저장 실패:', error.message);
-        }
-      });
-  }, []);
+  const setAbsenceReason = useCallback((memberId: string, date: Date, reason: string | null) =>
+    saveRecord(memberId, date, false, reason), [saveRecord]);
 
   /**
    * Prefill helper: current-date reason if set, otherwise the member's most recent
@@ -166,5 +157,5 @@ export function useAttendance(memberIds: string[], sundays: Date[]) {
     [state.absenceReasons],
   );
 
-  return { ...state, setPresent, setAbsenceReason, getPrefillAbsenceReason };
+  return { ...state, isSaving, setPresent, setAbsenceReason, getPrefillAbsenceReason };
 }

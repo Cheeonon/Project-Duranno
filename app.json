@@ -43,6 +43,20 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
+      ],
+      "./plugins/with-ios-minimum-target",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true,
+          "faceIDPermission": "두란노 앱의 잠금을 해제하기 위해 Face ID를 사용합니다."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "두란노 앱의 잠금을 해제하기 위해 Face ID를 사용합니다."
+        }
       ]
     ],
     "experiments": {

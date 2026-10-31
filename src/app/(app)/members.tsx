@@ -1,9 +1,11 @@
-import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MemberAccountModal } from '@/components/member-account-modal';
+import { useMemberEditor } from '@/hooks/use-member-editor';
+import { useMemberAccount } from '@/hooks/use-member-account';
 import { MemberAvatar } from '@/components/member-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -16,8 +18,6 @@ import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
 import { formatMemberDob, searchChurchMembers } from '@/lib/member-search';
 import { formatCellHistoryPeriod } from '@/lib/cell-history';
-import { deleteMemberPhoto, uploadMemberPhoto } from '@/lib/member-photos';
-import { supabase } from '@/lib/supabase';
 import type { CellGroupMembership, ChurchPosition, Gender, Member, MemberPermission } from '@/types/member';
 
 const POSITION_OPTIONS: ChurchPosition[] = [
@@ -88,176 +88,14 @@ export default function MembersScreen() {
   const { profile } = useAuth();
   const { members, isLoading, error, refresh } = useMembers();
   const [query, setQuery] = useState('');
-  const [accountMemberIds, setAccountMemberIds] = useState<Set<string>>(new Set());
-
-  const loadAccounts = useCallback(async () => {
-    const { data } = await supabase.from('profiles').select('member_id');
-    setAccountMemberIds(new Set((data ?? []).map((row) => row.member_id as string)));
-  }, []);
-
-  useEffect(() => {
-    // Also re-invoked after issuing an account, not just on mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadAccounts();
-  }, [loadAccounts]);
-
   const results = useMemo(() => searchChurchMembers(query, members), [query, members]);
   const isAdmin = profile?.permission === '관리자';
   const myEffectiveLeaderId = profile ? (profile.cellLeaderId ?? profile.memberId) : null;
   const cellLeaders = useMemo(() => members.filter((member) => member.permission === '셀장'), [members]);
 
-  const [editingMember, setEditingMember] = useState<Member | null>(null);
-  const [editDraft, setEditDraft] = useState<Member | null>(null);
-  const [editError, setEditError] = useState<string | null>(null);
-  const [editSubmitting, setEditSubmitting] = useState(false);
-  const [photoUploading, setPhotoUploading] = useState(false);
-  // Path of a photo uploaded during this edit session but not yet saved to the
-  // member row — used to clean up the orphaned object if the user cancels.
-  const [uploadedPhotoThisSession, setUploadedPhotoThisSession] = useState<string | null>(null);
-  const [photoPreviewUri, setPhotoPreviewUri] = useState<string | null>(null);
-
-  const openEdit = (member: Member) => {
-    setEditingMember(member);
-    setEditDraft({ ...member });
-    setEditError(null);
-    setUploadedPhotoThisSession(null);
-    setPhotoPreviewUri(null);
-  };
-
-  const resetEditState = () => {
-    setEditingMember(null);
-    setEditDraft(null);
-    setEditError(null);
-    setUploadedPhotoThisSession(null);
-    setPhotoPreviewUri(null);
-  };
-
-  const closeEdit = () => {
-    if (uploadedPhotoThisSession) {
-      deleteMemberPhoto(uploadedPhotoThisSession);
-    }
-    resetEditState();
-  };
-
-  const pickAndUploadPhoto = async () => {
-    if (!editDraft) {
-      return;
-    }
-
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setEditError('사진 보관함 접근 권한이 필요합니다.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-
-    if (result.canceled || result.assets.length === 0) {
-      return;
-    }
-
-    const asset = result.assets[0];
-    setPhotoUploading(true);
-    try {
-      const path = await uploadMemberPhoto(editDraft.id, asset.uri, asset.mimeType ?? 'image/jpeg');
-      if (uploadedPhotoThisSession) {
-        deleteMemberPhoto(uploadedPhotoThisSession);
-      }
-      setUploadedPhotoThisSession(path);
-      setPhotoPreviewUri(asset.uri);
-      setEditDraft({ ...editDraft, photoPath: path });
-    } catch (uploadError) {
-      setEditError(uploadError instanceof Error ? uploadError.message : '사진 업로드에 실패했습니다.');
-    } finally {
-      setPhotoUploading(false);
-    }
-  };
-
-  const saveEdit = async () => {
-    if (!editDraft) {
-      return;
-    }
-
-    setEditSubmitting(true);
-    const { error: saveError } = await supabase
-      .from('members')
-      .update({
-        name_ko: editDraft.nameKo,
-        name_en: editDraft.nameEn || null,
-        dob: editDraft.dob,
-        gender: editDraft.gender,
-        phone: editDraft.phone || null,
-        address: editDraft.address || null,
-        cell_leader_id: editDraft.cellLeaderId,
-        permission: editDraft.permission,
-        position: editDraft.position,
-        photo_path: editDraft.photoPath,
-      })
-      .eq('id', editDraft.id);
-    setEditSubmitting(false);
-
-    if (saveError) {
-      setEditError(saveError.message);
-      return;
-    }
-
-    if (editingMember?.photoPath && editingMember.photoPath !== editDraft.photoPath) {
-      deleteMemberPhoto(editingMember.photoPath);
-    }
-    resetEditState();
-    refresh();
-  };
-
-  const [issuingMember, setIssuingMember] = useState<Member | null>(null);
-  const [issueEmail, setIssueEmail] = useState('');
-  const [issuePassword, setIssuePassword] = useState('');
-  const [issueError, setIssueError] = useState<string | null>(null);
-  const [issueSubmitting, setIssueSubmitting] = useState(false);
-
-  const openIssue = (member: Member) => {
-    setIssuingMember(member);
-    setIssueEmail('');
-    setIssuePassword('');
-    setIssueError(null);
-  };
-
-  const closeIssue = () => {
-    setIssuingMember(null);
-    setIssueEmail('');
-    setIssuePassword('');
-    setIssueError(null);
-  };
-
-  const submitIssue = async () => {
-    if (!issuingMember) {
-      return;
-    }
-
-    if (!issueEmail.trim() || !issuePassword) {
-      setIssueError('이메일과 임시 비밀번호를 입력해주세요.');
-      return;
-    }
-
-    setIssueSubmitting(true);
-    const { error: invokeError } = await supabase.functions.invoke('create-member-account', {
-      body: { memberId: issuingMember.id, email: issueEmail.trim(), tempPassword: issuePassword },
-    });
-    setIssueSubmitting(false);
-
-    if (invokeError) {
-      setIssueError(invokeError.message ?? '계정 생성에 실패했습니다.');
-      return;
-    }
-
-    closeIssue();
-    loadAccounts();
-    refresh();
-  };
+  const { editingMember, editDraft, setEditDraft, editError, editSubmitting, photoUploading, photoPreviewUri, openEdit, closeEdit, pickAndUploadPhoto, saveEdit } = useMemberEditor(refresh);
+  const account = useMemberAccount(refresh);
+  const { accountMemberIds, openIssue } = account;
 
   return (
     <StackScreenEnter>
@@ -519,7 +357,7 @@ export default function MembersScreen() {
                 <Button variant="ghost" onPress={closeEdit}>
                   취소
                 </Button>
-                <Button variant="primary" disabled={editSubmitting} loading={editSubmitting} onPress={saveEdit}>
+                <Button variant="primary" disabled={editSubmitting || photoUploading} loading={editSubmitting} onPress={saveEdit}>
                   저장
                 </Button>
               </View>
@@ -528,55 +366,7 @@ export default function MembersScreen() {
         </Pressable>
       </Modal>
 
-      <Modal visible={issuingMember !== null} transparent animationType="fade" onRequestClose={closeIssue}>
-        <Pressable style={styles.modalOverlay} onPress={closeIssue}>
-          <View
-            style={[
-              styles.modalCard,
-              { backgroundColor: theme.background },
-              isDark ? Shadow.raised.dark : Shadow.raised.light,
-            ]}
-            onStartShouldSetResponder={() => true}>
-            <ThemedText type="smallBold">계정 발급</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {issuingMember?.nameKo}에게 로그인 계정을 발급합니다.
-            </ThemedText>
-
-            <TextInput
-              value={issueEmail}
-              onChangeText={setIssueEmail}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              placeholder="이메일"
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
-            />
-            <TextInput
-              value={issuePassword}
-              onChangeText={setIssuePassword}
-              placeholder="임시 비밀번호 (6자 이상)"
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
-            />
-
-            {issueError && (
-              <ThemedText type="small" themeColor="textSecondary">
-                {issueError}
-              </ThemedText>
-            )}
-
-            <View style={styles.modalActions}>
-              <Button variant="ghost" onPress={closeIssue}>
-                취소
-              </Button>
-              <Button variant="primary" disabled={issueSubmitting} loading={issueSubmitting} onPress={submitIssue}>
-                계정 생성
-              </Button>
-            </View>
-          </View>
-        </Pressable>
-      </Modal>
+      <MemberAccountModal {...account} />
       </ThemedView>
     </StackScreenEnter>
   );
