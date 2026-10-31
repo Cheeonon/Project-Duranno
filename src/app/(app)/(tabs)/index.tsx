@@ -1,3 +1,4 @@
+import { useHomeRefresh } from '@/hooks/use-home-refresh';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -79,26 +80,16 @@ export default function HomeScreen() {
   const { handleScroll, preserveScrollPosition } = usePreservedCollapse(scrollRef);
   const [activePanel, setActivePanel] = useState<QuickActionPanel | null>(null);
   const pendingSwitchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const { refreshing, refreshKey, onRefresh } = useHomeRefresh();
   const [quickActionsHeight, setQuickActionsHeight] = useState(0);
   // Fixed proportion of the viewport (like a CSS `70vh`) so all three
   // quick-action panels always line up at the same top/bottom.
   const panelHeight = height * 0.7 - 15;
-  const { profile, refreshProfile } = useAuth();
-  const { events, refresh: refreshEvents } = useCalendarEvents();
+  const { profile } = useAuth();
+  const { events } = useCalendarEvents();
 
   const upcomingEvents = useMemo(() => getUpcomingEvents(events, new Date()), [events]);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await Promise.all([refreshProfile(), refreshEvents()]);
-      setRefreshKey((current) => current + 1);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshProfile, refreshEvents]);
 
   const iconColor = theme.text;
 

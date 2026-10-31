@@ -1,3 +1,4 @@
+import { useAuth } from '@/contexts/auth-context';
 import { pickMemberPhoto } from '@/lib/pick-member-photo';
 import { useState } from 'react';
 import { deleteMemberPhoto } from '@/lib/member-photos';
@@ -5,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import type { Member } from '@/types/member';
 
 export function useMemberEditor(refresh: () => Promise<void>) {
+  const { refreshProfile } = useAuth();
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [editDraft, setEditDraft] = useState<Member | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export function useMemberEditor(refresh: () => Promise<void>) {
         deleteMemberPhoto(editingMember.photoPath);
       }
       resetEditState();
-      await refresh();
+      await Promise.all([refresh(), refreshProfile()]);
     } catch (error) {
       setEditError(error instanceof Error ? error.message : '성도 정보 저장에 실패했습니다.');
     } finally {

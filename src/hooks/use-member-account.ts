@@ -29,11 +29,15 @@ export function useMemberAccount(refresh: () => Promise<void>) {
     setIssueError(null);
   };
 
-  const closeIssue = () => {
+  const resetIssue = () => {
     setIssuingMember(null);
     setIssueEmail('');
     setIssuePassword('');
     setIssueError(null);
+  };
+
+  const closeIssue = () => {
+    if (!issueSubmitting) resetIssue();
   };
 
   const submitIssue = async () => {
@@ -52,7 +56,7 @@ export function useMemberAccount(refresh: () => Promise<void>) {
         body: { memberId: issuingMember.id, email: issueEmail.trim(), tempPassword: issuePassword },
       });
       if (error) throw error;
-      closeIssue();
+      resetIssue();
       await Promise.all([loadAccounts(), refresh()]);
     } catch (error) {
       setIssueError(error instanceof Error ? error.message : '계정 생성에 실패했습니다.');

@@ -1,3 +1,4 @@
+import { useMembers } from '@/hooks/use-members';
 import { BiometricLockSetting } from '@/components/biometric-lock-setting';
 import { pickMemberPhoto } from '@/lib/pick-member-photo';
 import { router } from 'expo-router';
@@ -21,6 +22,7 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
   const { profile, signOut, changePassword, refreshProfile } = useAuth();
+  const { refresh: refreshMembers } = useMembers();
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -63,7 +65,7 @@ export default function SettingsScreen() {
         deleteMemberPhoto(currentMember.photo_path);
       }
 
-      await refreshProfile();
+      await Promise.all([refreshProfile(), refreshMembers()]);
     } catch (uploadError) {
       setPhotoError(uploadError instanceof Error ? uploadError.message : '사진 업로드에 실패했습니다.');
     } finally {
@@ -98,7 +100,7 @@ export default function SettingsScreen() {
         deleteMemberPhoto(currentMember.photo_path);
       }
 
-      await refreshProfile();
+      await Promise.all([refreshProfile(), refreshMembers()]);
     } catch (removeError) {
       setPhotoError(removeError instanceof Error ? removeError.message : '사진 삭제에 실패했습니다.');
     } finally {

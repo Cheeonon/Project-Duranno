@@ -1,3 +1,4 @@
+import { canEditMember, GENDER_OPTIONS, PERMISSION_OPTIONS, POSITION_OPTIONS } from '@/lib/member-permissions';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -18,44 +19,7 @@ import { useMembers } from '@/hooks/use-members';
 import { useTheme } from '@/hooks/use-theme';
 import { formatMemberDob, searchChurchMembers } from '@/lib/member-search';
 import { formatCellHistoryPeriod } from '@/lib/cell-history';
-import type { CellGroupMembership, ChurchPosition, Gender, Member, MemberPermission } from '@/types/member';
-
-const POSITION_OPTIONS: ChurchPosition[] = [
-  '목사',
-  '사모',
-  '전도사',
-  '간사',
-  '집사',
-  '장로',
-  '권사',
-  '셀장',
-  '새신자 팀원',
-  '셀원',
-  '회장',
-  '부회장',
-  '새신자 팀장',
-];
-
-const PERMISSION_OPTIONS: MemberPermission[] = ['성도', '임원', '셀장', '사역자', '재정', '관리자'];
-
-const GENDER_OPTIONS: { value: Gender; label: string }[] = [
-  { value: 'male', label: '남' },
-  { value: 'female', label: '여' },
-];
-
-function canEditMember(
-  permission: MemberPermission | undefined,
-  myEffectiveLeaderId: string | null,
-  member: Member,
-) {
-  if (permission === '임원' || permission === '관리자') {
-    return true;
-  }
-  if (permission === '셀장') {
-    return (member.cellLeaderId ?? member.id) === myEffectiveLeaderId;
-  }
-  return false;
-}
+import type { CellGroupMembership } from '@/types/member';
 
 function PreviousCellHistory({ history }: { history: CellGroupMembership[] }) {
   if (history.length === 0) {

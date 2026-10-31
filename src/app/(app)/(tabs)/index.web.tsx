@@ -1,6 +1,7 @@
+import { useHomeRefresh } from '@/hooks/use-home-refresh';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -39,10 +40,9 @@ export default function HomeScreen() {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [topHeight, setTopHeight] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const { refreshing, refreshKey, onRefresh } = useHomeRefresh();
   const [activePanel, setActivePanel] = useState<DashboardPanel>('attendance');
-  const { profile, refreshProfile } = useAuth();
+  const { profile } = useAuth();
   const { events } = useCalendarEvents();
 
   const upcomingEvents = useMemo(() => getUpcomingEvents(events, new Date()), [events]);
@@ -54,15 +54,6 @@ export default function HomeScreen() {
     height - insets.top - insets.bottom - TopTabInset - Spacing.four * 2 - topHeight - TOP_GAP,
   );
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await refreshProfile();
-      setRefreshKey((current) => current + 1);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshProfile]);
 
   return (
     <TabScreenSlide tabIndex={0}>
