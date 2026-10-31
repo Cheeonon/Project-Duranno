@@ -15,9 +15,12 @@ import { useHomeTextScale } from '@/contexts/home-text-scale';
 
 type AnimatedUserNameProps = {
   name: string;
+  /** Overrides the default hero-sized font — lets callers make the name stand out more. */
+  fontSize?: number;
+  lineHeight?: number;
 };
 
-export function AnimatedUserName({ name }: AnimatedUserNameProps) {
+export function AnimatedUserName({ name, fontSize = FontSize.hero, lineHeight = 32 }: AnimatedUserNameProps) {
   const theme = useTheme();
   const { scaled } = useHomeTextScale();
   const scale = useSharedValue(1);
@@ -46,8 +49,8 @@ export function AnimatedUserName({ name }: AnimatedUserNameProps) {
         styles.name,
         {
           color: theme.text,
-          fontSize: scaled(FontSize.hero),
-          lineHeight: scaled(32),
+          fontSize: scaled(fontSize),
+          lineHeight: scaled(lineHeight),
         },
         animatedStyle,
       ]}>
